@@ -1,0 +1,1667 @@
+import { RiwayatPangkat, RiwayatPendidikan, RiwayatGaji, RiwayatPelatihan, Keluarga, RiwayatJabatan } from '../types';
+
+export const SIMPEG_PANGKAT_DATA: RiwayatPangkat[] = [
+  {
+    golRuang: 'II/a',
+    pangkat: 'Pengatur Muda',
+    tmtPangkat: '1992-03-01',
+    nomorSk: 'W7.A.15-KP.04.01 TAHUN 1992',
+    tanggalSk: '1992-06-01',
+    pejabatPenetap: 'Kepala Kantor Wilayah DKI Jakarta',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 0,
+    masaKerjaBulan: 0,
+    keterangan: 'CPNS'
+  },
+  {
+    golRuang: 'II/a',
+    pangkat: 'Pengatur Muda',
+    tmtPangkat: '1993-08-01',
+    nomorSk: 'W7.45.KP.04.02 TAHUN 1993',
+    tanggalSk: '1993-07-20',
+    pejabatPenetap: 'Kepala Kantor Wilayah DKI Jakarta',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 1,
+    masaKerjaBulan: 5,
+    keterangan: 'PNS'
+  },
+  {
+    golRuang: 'II/b',
+    pangkat: 'Pengatur Muda Tingkat I',
+    tmtPangkat: '1996-04-01',
+    nomorSk: 'SP 275/KP/1996',
+    tanggalSk: '1996-03-29',
+    pejabatPenetap: 'Kepala Badan Administrasi Kepegawaian Negara',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 4,
+    masaKerjaBulan: 1,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/a',
+    pangkat: 'Penata Muda',
+    tmtPangkat: '1998-10-01',
+    nomorSk: 'A2.2691.KP.04.05.1998',
+    tanggalSk: '1998-10-08',
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKp: 'Penyesuaian Ijazah',
+    masaKerjaTahun: 1,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/b',
+    pangkat: 'Penata Muda Tingkat I',
+    tmtPangkat: '2002-10-01',
+    nomorSk: 'A2.685.KP.04.05 TAHUN 2002',
+    tanggalSk: '2002-11-28',
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 5,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/c',
+    pangkat: 'Penata',
+    tmtPangkat: '2006-10-01',
+    nomorSk: 'A2.3551.KP.04.05 TAHUN 2006',
+    tanggalSk: '2006-09-04',
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 9,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/d',
+    pangkat: 'Penata Tingkat I',
+    tmtPangkat: '2010-10-01',
+    nomorSk: 'IMI.1.2064.KP.04.04 TAHUN 2010',
+    tanggalSk: '2010-08-10',
+    pejabatPenetap: 'Direktur Jenderal Imigrasi',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 13,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/a',
+    pangkat: 'Pembina',
+    tmtPangkat: '2014-10-01',
+    nomorSk: 'SEK-3213.KP.04.04 TAHUN 2014',
+    tanggalSk: '2014-09-29',
+    pejabatPenetap: 'a.n. Sekretaris Jenderal',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 17,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/b',
+    pangkat: 'Pembina Tingkat I',
+    tmtPangkat: '2018-10-01',
+    nomorSk: 'SEK.2-1643.KP.04.05 TAHUN 2018',
+    tanggalSk: '2018-10-09',
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 21,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/c',
+    pangkat: 'Pembina Utama Muda',
+    tmtPangkat: '2021-10-01',
+    nomorSk: '00105/KEP/AA/15001/21',
+    tanggalSk: '2021-09-09',
+    pejabatPenetap: 'Kepala Badan Administrasi Kepegawaian Negara',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 24,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/d',
+    pangkat: 'Pembina Utama Madya',
+    tmtPangkat: '2025-10-01',
+    nomorSk: '00503/KEP/AA/15001/25',
+    tanggalSk: '2025-08-13',
+    pejabatPenetap: 'Presiden Republik Indonesia',
+    jenisKp: 'Pilihan (Struktural)',
+    masaKerjaTahun: 28,
+    masaKerjaBulan: 7,
+    keterangan: 'KP'
+  }
+];
+
+export const SIMPEG_PENDIDIKAN_DATA: RiwayatPendidikan[] = [
+  {
+    jenjang: 'SD',
+    institusi: 'SD NEGERI 01 DUMAI',
+    namaSekolah: 'SD NEGERI 01 DUMAI',
+    jurusan: '-',
+    alamatSekolah: 'DUMAI',
+    kepalaSekolah: '-',
+    nomorIjazah: '09 OA oa 017787',
+    tanggalIjazah: '1983-10-10',
+    tahunLulus: '1983',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'SMP/SLTP',
+    institusi: 'SLTP KARANGANYAR DUMAI',
+    namaSekolah: 'SLTP KARANGANYAR DUMAI',
+    jurusan: '-',
+    alamatSekolah: 'DUMAI KABUPATEN BENGKALIS',
+    kepalaSekolah: '-',
+    nomorIjazah: '09 OB ob 0072714',
+    tanggalIjazah: '1986-10-10',
+    tahunLulus: '1986',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'SMA/SMU/SMK',
+    institusi: 'SMAN 6 PEKANBARU',
+    namaSekolah: 'SMAN 6 PEKANBARU',
+    jurusan: 'IPA',
+    alamatSekolah: 'SAIL KOTAMADYA PEKANBARU',
+    kepalaSekolah: 'DRS. HASAN BASRI',
+    nomorIjazah: '09 OC oh 0003715',
+    tanggalIjazah: '1989-05-09',
+    tahunLulus: '1989',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'S1',
+    institusi: 'SARJANA UNIV. MUHAMMADIYAH JAKARTA',
+    namaSekolah: 'SARJANA UNIV. MUHAMMADIYAH JAKARTA',
+    jurusan: 'HUKUM PIDANA',
+    alamatSekolah: 'SARJANA UNIV. MUHAMMADIYAH JAKARTA',
+    kepalaSekolah: 'Prof. Dr. Ir. H. M. Amin Aziz',
+    nomorIjazah: '002609',
+    tanggalIjazah: '1994-12-16',
+    tahunLulus: '1994',
+    pemakaianIjazah: 'Penyesuaian Ijazah'
+  },
+  {
+    jenjang: 'S2',
+    institusi: 'PASCA SARJANA UNIV. SEBELAS MARET',
+    namaSekolah: 'PASCA SARJANA UNIV. SEBELAS MARET',
+    jurusan: 'HUKUM KEBIJAKAN PUBLIK',
+    alamatSekolah: 'PASCA SARJANA UNIV. SEBELAS MARET SURAKARTA',
+    kepalaSekolah: 'Prof. Dr. dr. Much. Syamsulhadi, Sp.KJ(K)',
+    nomorIjazah: '098/j27/s2/2005',
+    tanggalIjazah: '2005-05-10',
+    tahunLulus: '2005',
+    pemakaianIjazah: '-'
+  }
+];
+
+export const SIMPEG_GAJI_DATA: RiwayatGaji[] = [
+  {
+    nomorSk: 'W7.A.15-KP.04.01 TAHUN 1992',
+    tanggalSk: '1992-06-01',
+    tmtSk: '1992-03-01',
+    pangkat: 'II/a',
+    gajiPokok: '2.022.200',
+    masaKerjaTahun: 0,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'Kepala Kantor Wilayah DKI Jakarta',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'W7.45.KP.04.02 TAHUN 1993',
+    tanggalSk: '1993-07-20',
+    tmtSk: '1993-08-01',
+    pangkat: 'II/a',
+    gajiPokok: '2.054.100',
+    masaKerjaTahun: 1,
+    masaKerjaBulan: 5,
+    pejabatPenetap: 'Kepala Kantor Wilayah DKI Jakarta',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'SP 275/KP/1996',
+    tanggalSk: '1996-03-29',
+    tmtSk: '1996-04-01',
+    pangkat: 'II/b',
+    gajiPokok: '2.208.400',
+    masaKerjaTahun: 4,
+    masaKerjaBulan: 1,
+    pejabatPenetap: 'Kepala Badan Administrasi Kepegawaian',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'A2.2691.KP.04.05.1998',
+    tanggalSk: '1998-10-08',
+    tmtSk: '1998-10-01',
+    pangkat: 'III/a',
+    gajiPokok: '241.800',
+    masaKerjaTahun: 1,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'A2.6897.KP.04.05.2002',
+    tanggalSk: '2002-11-28',
+    tmtSk: '2002-10-01',
+    pangkat: 'III/b',
+    gajiPokok: '828.200',
+    masaKerjaTahun: 5,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'W9-FV.KP.04.08.4-0053',
+    tanggalSk: '2005-01-06',
+    tmtSk: '2005-03-01',
+    pangkat: 'III/b',
+    gajiPokok: '1.031.400',
+    masaKerjaTahun: 8,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'KEPALA KANTOR IMIGRASI KLAS I JAKARTA SELATAN',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'A2.3551.KP.04.05.2006',
+    tanggalSk: '2006-09-04',
+    tmtSk: '2006-10-01',
+    pangkat: 'III/c',
+    gajiPokok: '1.236.300',
+    masaKerjaTahun: 9,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'W2.GR.KP.04.08-0306',
+    tanggalSk: '2007-01-25',
+    tmtSk: '2007-03-01',
+    pangkat: 'III/c',
+    gajiPokok: '1.461.200',
+    masaKerjaTahun: 10,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'KEPALA RUMAH DETENSI IMIGRASI',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'IMI.1.2064.KP.04.04 TAHUN 2010',
+    tanggalSk: '2010-08-10',
+    tmtSk: '2010-10-01',
+    pangkat: 'III/d',
+    gajiPokok: '2.283.400',
+    masaKerjaTahun: 13,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Direktur Jenderal Imigrasi',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: 'IMI.1-108.KP.04.03',
+    tanggalSk: '2011-02-07',
+    tmtSk: '2011-03-01',
+    pangkat: 'III/d',
+    gajiPokok: '2.339.400',
+    masaKerjaTahun: 14,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'Direktur Jenderal Imigrasi',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: 'W10.F06.KP.04.03-35',
+    tanggalSk: '2013-02-07',
+    tmtSk: '2013-03-01',
+    pangkat: 'III/d',
+    gajiPokok: '2.957.500',
+    masaKerjaTahun: 16,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'Kepala KANIM KELAS II MADIUN',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: 'SEK-3213.KP.04.04 TAHUN 2014',
+    tanggalSk: '2014-09-29',
+    tmtSk: '2014-10-01',
+    pangkat: 'IV/a',
+    gajiPokok: '3.901.500',
+    masaKerjaTahun: 17,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'a.n. Sekretaris Jenderal',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'IMI.1-KP.04.03-0717',
+    tanggalSk: '2015-02-18',
+    tmtSk: '2015-03-01',
+    pangkat: 'IV/a',
+    gajiPokok: '3.615.800',
+    masaKerjaTahun: 18,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'SEKRETARIS DIREKTORAT JENDERAL IMIGRASI',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: 'SEK.2-1643.KP.04.05 TAHUN 2018',
+    tanggalSk: '2018-10-09',
+    tmtSk: '2018-10-01',
+    pangkat: 'IV/b',
+    gajiPokok: '4.326.700',
+    masaKerjaTahun: 21,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'W.30-KP.04.04-057',
+    tanggalSk: '2019-02-21',
+    tmtSk: '2019-03-01',
+    pangkat: 'IV/b',
+    gajiPokok: '4.250.600',
+    masaKerjaTahun: 22,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'KEPALA KANWIL KEMENTERIAN HUKUM DAN HAM',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: '00105/KEP/AA/15001/21',
+    tanggalSk: '2021-09-09',
+    tmtSk: '2021-10-01',
+    pangkat: 'IV/c',
+    gajiPokok: '5.182.000',
+    masaKerjaTahun: 24,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Kepala Badan Administrasi Kepegawaian Negara',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: 'KPPN Madiun'
+  },
+  {
+    nomorSk: 'HKI.1-KP.04.04-320',
+    tanggalSk: '2025-04-28',
+    tmtSk: '2023-03-01',
+    pangkat: 'IV/c',
+    gajiPokok: '4.949.400',
+    masaKerjaTahun: 26,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'Sekretaris Direktorat Jenderal Kekayaan Intelektual',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: '-'
+  },
+  {
+    nomorSk: 'HKI.1-KP.04.04-321',
+    tanggalSk: '2025-04-28',
+    tmtSk: '2025-03-01',
+    pangkat: 'IV/c',
+    gajiPokok: '5.513.600',
+    masaKerjaTahun: 28,
+    masaKerjaBulan: 0,
+    pejabatPenetap: 'Sekretaris Direktorat Jenderal Kekayaan Intelektual',
+    jenisKenaikanGaji: 'Gaji Berkala',
+    kppn: '-'
+  },
+  {
+    nomorSk: '00503/KEP/AA/15001/25',
+    tanggalSk: '2025-08-13',
+    tmtSk: '2025-10-01',
+    pangkat: 'IV/d',
+    gajiPokok: '5.321.200',
+    masaKerjaTahun: 28,
+    masaKerjaBulan: 7,
+    pejabatPenetap: 'Presiden Republik Indonesia',
+    jenisKenaikanGaji: 'Kenaikan Pangkat',
+    kppn: '-'
+  }
+];
+
+export const SIMPEG_PELATIHAN_DATA: RiwayatPelatihan[] = [
+  {
+    jenisDiklat: 'Diklat Prajabatan',
+    namaPelatihan: 'Diklat Pra Jabatan',
+    angkatan: '-',
+    tahun: '1992',
+    tanggalMulai: '1992-08-10',
+    tanggalSelesai: '1992-08-26',
+    durasi: '0',
+    tempat: 'JAKARTA',
+    penyelenggara: 'PUSDIKLAT DEP. KEHAKIMAN',
+    nomorSertifikat: '025/II/PUSDIKLAT-DEPKEH/1992',
+    tanggalSertifikat: '1992-08-26',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Kepemimpinan',
+    namaPelatihan: 'Adum/Sepada',
+    angkatan: 'VII',
+    tahun: '2001',
+    tanggalMulai: '2001-07-20',
+    tanggalSelesai: '2001-08-21',
+    durasi: '250',
+    tempat: 'CIAWI BOGOR',
+    penyelenggara: 'LEMBAGA ADMINISTRASI NEGARA',
+    nomorSertifikat: '7939/ADUM/LAN/2001',
+    tanggalSertifikat: '2001-08-21',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Kepemimpinan',
+    namaPelatihan: 'Spama/Sepadya/Diklatpim III',
+    angkatan: 'XLII',
+    tahun: '2012',
+    tanggalMulai: '2012-05-28',
+    tanggalSelesai: '2012-07-15',
+    durasi: '360',
+    tempat: 'Jakarta',
+    penyelenggara: 'BPSDM Hukum dan HAM',
+    nomorSertifikat: '3.585/II.26/DIKLATPIM-III/2012',
+    tanggalSertifikat: '2012-07-15',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Diklat Prajabatan',
+    namaPelatihan: 'Diklat Pra Jabatan',
+    angkatan: '1',
+    tahun: '2014',
+    tanggalMulai: '2014-11-16',
+    tanggalSelesai: '2014-11-22',
+    durasi: '50',
+    tempat: 'Badan Pengembangan SDM',
+    penyelenggara: 'Lembaga Administrasi Negara RI',
+    nomorSertifikat: '0015945/0IKLA...',
+    tanggalSertifikat: '2014-11-22',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Kepemimpinan',
+    namaPelatihan: 'Spamen/Diklatpim II',
+    angkatan: 'X',
+    tahun: '2020',
+    tanggalMulai: '2020-07-07',
+    tanggalSelesai: '2020-10-23',
+    durasi: '887',
+    tempat: 'BPSDMD Provinsi Jawa Barat',
+    penyelenggara: 'LAN',
+    nomorSertifikat: '-Nomor : 00000...',
+    tanggalSertifikat: '2020-10-23',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Kepemimpinan',
+    namaPelatihan: 'Sespa/Spati/Diklatpim I',
+    angkatan: 'LXIII',
+    tahun: '2025',
+    tanggalMulai: '2025-06-02',
+    tanggalSelesai: '2025-10-22',
+    durasi: '935',
+    tempat: 'Jakarta',
+    penyelenggara: 'LAN',
+    nomorSertifikat: '00000063/PKN ...',
+    tanggalSertifikat: '2025-10-22',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'KESAMAPTAAN SATUAN PENGAMANAN',
+    angkatan: '-',
+    tahun: '1992',
+    tanggalMulai: '1992-02-03',
+    tanggalSelesai: '1992-03-03',
+    durasi: '0',
+    tempat: 'KELAPADUA, DEPOK',
+    penyelenggara: 'PUSDIK PERS POLRIN KELAPADUA',
+    nomorSertifikat: '920205',
+    tanggalSertifikat: '1992-03-03',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'KESAMAPTAAN',
+    angkatan: '-',
+    tahun: '1995',
+    tanggalMulai: '1995-07-06',
+    tanggalSelesai: '1995-07-26',
+    durasi: '0',
+    tempat: 'KELAPADUA, DEPOK',
+    penyelenggara: 'PUSDIK BIMMAS POLRI',
+    nomorSertifikat: '950717',
+    tanggalSertifikat: '1995-07-26',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'PPNS Ditjen Imigrasi Angkatan CIII',
+    angkatan: 'VIII',
+    tahun: '1996',
+    tanggalMulai: '1996-01-15',
+    tanggalSelesai: '1996-03-14',
+    durasi: '0',
+    tempat: 'MEGAMENDUNG, BOGOR',
+    penyelenggara: 'LEMBAGA PENDIDIKAN DAN LATIHAN POLRI',
+    nomorSertifikat: '000043',
+    tanggalSertifikat: '1996-03-14',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'PENDIDIKAN DASAR KEIMIGRASIAN (DIKDASIM)',
+    angkatan: 'XVIII',
+    tahun: '1996',
+    tanggalMulai: '1995-07-27',
+    tanggalSelesai: '1996-01-11',
+    durasi: '0',
+    tempat: 'JAKARTA',
+    penyelenggara: 'AKADEMI IMIGRASI PUSDIKLAT DEP. KEHAKIMAN',
+    nomorSertifikat: '01/PUSDIKLAT-DEPKEH/1996',
+    tanggalSertifikat: '1996-01-11',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'KURSUS INTELIJEN IMIGRASI',
+    angkatan: 'VII',
+    tahun: '2007',
+    tanggalMulai: '2007-10-25',
+    tanggalSelesai: '2007-12-19',
+    durasi: '0',
+    tempat: 'CILENDEK BOGOR',
+    penyelenggara: 'BADAN INTELIJEN STRATEGIS TNI',
+    nomorSertifikat: '02/INTELIJEN IMIGRASI/2007',
+    tanggalSertifikat: '2007-12-18',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Fungsional',
+    namaPelatihan: 'MANAJEMEN PENGADAAN BARANG/JASA PEMERINTAH',
+    angkatan: '-',
+    tahun: '2009',
+    tanggalMulai: '2009-03-27',
+    tanggalSelesai: '2009-04-06',
+    durasi: '115',
+    tempat: 'JAKARTA',
+    penyelenggara: 'BADAN PENGEMBANGAN SUMBER DAYA MANUSIA',
+    nomorSertifikat: '18/BPSDM/MAN-PBJ/2009',
+    tanggalSertifikat: '2009-04-06',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'TRAINING OF FACILITATOR (TOF)',
+    angkatan: 'I',
+    tahun: '2014',
+    tanggalMulai: '2014-11-16',
+    tanggalSelesai: '2014-11-22',
+    durasi: '50',
+    tempat: 'CINERE',
+    penyelenggara: 'BPSDM',
+    nomorSertifikat: '00015945/DIKLAT-TOF/2014',
+    tanggalSertifikat: '2014-11-22',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Pengembangan Bahasa',
+    namaPelatihan: 'Pelatihan English For Effective Presentation',
+    angkatan: 'III',
+    tahun: '2025',
+    tanggalMulai: '2025-08-19',
+    tanggalSelesai: '2025-08-23',
+    durasi: '50',
+    tempat: 'Jakarta',
+    penyelenggara: 'UPT Balai Diklat Bahasa Pusat Pengembangan Teknis',
+    nomorSertifikat: '00003427/DIKLAT-EN/2025',
+    tanggalSertifikat: '2025-08-23',
+    prestasi: '-'
+  }
+];
+
+export const SIMPEG_KELUARGA_DATA: Keluarga[] = [
+  {
+    hubungan: 'Istri',
+    nama: 'Hj. SITI AISYAH, S.E.',
+    tempatLahir: 'JAKARTA',
+    tanggalLahir: '1972-04-14',
+    jenisKelamin: 'P',
+    pekerjaan: 'IBU RUMAH TANGGA / WIRASWASTA',
+    nik: '3175000000000001',
+    statusPerkawinan: 'Kawin',
+    keteranganTunjangan: 'Dapat Tunjangan'
+  },
+  {
+    hubungan: 'Anak',
+    nama: 'MUHAMMAD RIZKY PRATAMA, S.T.',
+    tempatLahir: 'JAKARTA',
+    tanggalLahir: '1998-09-12',
+    jenisKelamin: 'L',
+    pekerjaan: 'KARYAWAN SWASTA',
+    nik: '3175000000000002',
+    statusPerkawinan: 'Belum Kawin',
+    keteranganTunjangan: 'Tidak Dapat'
+  },
+  {
+    hubungan: 'Anak',
+    nama: 'NURUL FADHILAH',
+    tempatLahir: 'SURABAYA',
+    tanggalLahir: '2004-11-05',
+    jenisKelamin: 'P',
+    pekerjaan: 'MAHASISWA',
+    nik: '3175000000000003',
+    statusPerkawinan: 'Belum Kawin',
+    keteranganTunjangan: 'Dapat Tunjangan'
+  }
+];
+
+export const SIMPEG_JABATAN_DATA: RiwayatJabatan[] = [
+  {
+    nomorSk: 'A2.113-KP.04.10 TAHUN 2005',
+    tanggalSk: '2005-08-03',
+    namaJabatan: 'KASUBSI REGISTRASI RUDENIM MEDAN RUDENIM MEDAN',
+    unitKerja: 'RUDENIM MEDAN',
+    tmtJabatan: '2005-11-30',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'V',
+    tmtEselon: '2005-08-03',
+    nomorPelantikan: '',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'M-1228.KP.04.04 Tahun 2007/ 22 Ag...',
+    tanggalSk: '2007-08-22',
+    namaJabatan: 'KASI UNIT C KANIM KHUSUS NGURAH RAI KANIM KHUSUS KL...',
+    unitKerja: 'KANIM KHUSUS NGURAH RAI',
+    tmtJabatan: '2007-10-22',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'IV.b',
+    tmtEselon: '2007-08-22',
+    nomorPelantikan: '',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'M.HH-764.KP.03.03 Tahun 2008',
+    tanggalSk: '2008-11-21',
+    namaJabatan: 'KASUBBAG PENYUSUSNAN RENCANA & ANGGARAN SETDITJ...',
+    unitKerja: 'SETDITJEN IMIGRASI',
+    tmtJabatan: '2008-11-25',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'IV.a',
+    tmtEselon: '2008-11-21',
+    nomorPelantikan: 'IMI-KP.09.03-2414',
+    tanggalPelantikan: '2008-11-25'
+  },
+  {
+    nomorSk: 'SEK.14.KP.03.03 TAHUN 2011/02 0...',
+    tanggalSk: '2011-03-02',
+    namaJabatan: 'KASUBBAG PENYUSUSNAN RENCANA & ANGGARAN SETDITJ...',
+    unitKerja: 'SETDITJEN IMIGRASI',
+    tmtJabatan: '2011-03-22',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'IV.a',
+    tmtEselon: '2011-03-02',
+    nomorPelantikan: 'IMI-KP.03.03-1072',
+    tanggalPelantikan: '2011-03-21'
+  },
+  {
+    nomorSk: 'M.HH-33.KP.03.03 TAHUN 2011/28 ...',
+    tanggalSk: '2011-04-28',
+    namaJabatan: 'KEPALA KANIM KELAS II MADIUN',
+    unitKerja: 'KANIM KELAS II MADIUN',
+    tmtJabatan: '2011-05-19',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'III.b',
+    tmtEselon: '2011-04-28',
+    nomorPelantikan: 'W10-KP.03.03-02',
+    tanggalPelantikan: '2011-05-19'
+  },
+  {
+    nomorSk: 'SEK-37.KP.03.03 TAHUN 2013',
+    tanggalSk: '2013-10-02',
+    namaJabatan: 'KEPALA SUBDIT IZIN MASUK, BERTOLAK DAN TEMPAT PEME...',
+    unitKerja: 'DITJEN IMIGRASI',
+    tmtJabatan: '2013-10-02',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: 'III.a',
+    tmtEselon: '2011-04-28',
+    nomorPelantikan: 'SEK-37.KP.03 TAHUN ...',
+    tanggalPelantikan: '2013-10-02'
+  },
+  {
+    nomorSk: 'SEK-29.KP.03.03 TAHUN 2014',
+    tanggalSk: '2014-10-06',
+    namaJabatan: 'KEPALA BAGIAN KEPEGAWAIAN SEKRETARIAT DIREKTORAT J...',
+    unitKerja: 'SETDITJEN IMIGRASI',
+    tmtJabatan: '2014-10-06',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: 'III.a',
+    tmtEselon: '2013-10-02',
+    nomorPelantikan: '',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'SEK-15.KP.04.01 TAHUN 2015',
+    tanggalSk: '2015-01-13',
+    namaJabatan: 'ATASE IMIGRASI PADA PERWAKILAN RI DI BERLIN',
+    unitKerja: 'KBRI BERLIN',
+    tmtJabatan: '2015-01-13',
+    pejabatPenetap: 'SEKRETARIS JENDERAL',
+    eselon: '-',
+    tmtEselon: '',
+    nomorPelantikan: '',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'M.HH-11.KP.03.03 TAHUN 2018',
+    tanggalSk: '2018-05-03',
+    namaJabatan: 'KEPALA DIVISI KEIMIGRASIAN KANWIL KEMENTERIAN HUKU...',
+    unitKerja: 'KANWIL KEMENKUMHAM',
+    tmtJabatan: '2018-05-14',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.b',
+    tmtEselon: '',
+    nomorPelantikan: 'SEK.KP.03.03-392',
+    tanggalPelantikan: '2018-05-14'
+  },
+  {
+    nomorSk: 'MHH32KP0303TAHUN2019',
+    tanggalSk: '2019-07-31',
+    namaJabatan: 'KEPALA DIVISI KEIMIGRASIAN KANWIL KEMENTERIAN HUKU...',
+    unitKerja: 'KANWIL KEMENKUMHAM',
+    tmtJabatan: '2019-11-06',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.b',
+    tmtEselon: '',
+    nomorPelantikan: 'SEKKP0303595',
+    tanggalPelantikan: '2019-08-09'
+  },
+  {
+    nomorSk: 'M.HH-22.KP.03.03 TAHUN 2020',
+    tanggalSk: '2020-04-09',
+    namaJabatan: 'KEPALA PUSAT DATA DAN TEKNOLOGI INFORMASI',
+    unitKerja: 'PUSDATIN KEMENKUMHAM',
+    tmtJabatan: '2020-05-07',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'SEK.KP.03.03-406',
+    tanggalPelantikan: '2020-05-07'
+  },
+  {
+    nomorSk: 'M.HH-28.KP.03.03 Tahun 2023',
+    tanggalSk: '2023-09-22',
+    namaJabatan: 'KEPALA KANWIL KEMENTERIAN HUKUM DAN HAM SULAWESI ...',
+    unitKerja: 'KANWIL SULAWESI',
+    tmtJabatan: '2023-09-25',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-292',
+    tanggalPelantikan: '2023-09-25'
+  },
+  {
+    nomorSk: 'M.HH-80.KP.03.03 TAHUN 2024',
+    tanggalSk: '2024-11-15',
+    namaJabatan: 'Direktur Merek dan Indikasi Geografis',
+    unitKerja: 'DITJEN KEKAYAAN INTELEKTUAL',
+    tmtJabatan: '2024-12-16',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-269',
+    tanggalPelantikan: '2024-11-18'
+  },
+  {
+    nomorSk: '170/TPA TAHUN 2025',
+    tanggalSk: '2025-11-12',
+    namaJabatan: 'Direktur Jenderal Kekayaan Intelektual',
+    unitKerja: 'DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL',
+    tmtJabatan: '2025-11-28',
+    pejabatPenetap: 'Presiden Republik Indonesia / Menkumham',
+    eselon: 'I.a',
+    tmtEselon: '',
+    nomorPelantikan: 'WMH-KP.03.03-91',
+    tanggalPelantikan: '2025-11-28'
+  }
+];
+
+export const ANDRIEANSJAH_JABATAN_DATA: RiwayatJabatan[] = [
+  {
+    nomorSk: 'M.HH-40.KP.03.03 TAHUN 2010',
+    tanggalSk: '2010-08-31',
+    namaJabatan: 'KASI KERJASAMA REGIONAL DITJEN HKI',
+    unitKerja: 'Direktorat Jenderal Hak Kekayaan Intelektual',
+    tmtJabatan: '2010-08-31',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'IV.a',
+    tmtEselon: '2010-08-31',
+    nomorPelantikan: '-',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'NOMOR SK KOSONG',
+    tanggalSk: '2017-12-31',
+    namaJabatan: 'KEPALA SEKSI KLASIFIKASI DAN PENELUSURAN',
+    unitKerja: 'Direktorat Jenderal Kekayaan Intelektual',
+    tmtJabatan: '2012-03-26',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'IV.a',
+    tmtEselon: '',
+    nomorPelantikan: '-',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'SEK-03.KP.03.03 TAHUN 2014',
+    tanggalSk: '2014-01-16',
+    namaJabatan: 'KEPALA SUBDIT KERJA SAMA LUAR NEGERI',
+    unitKerja: 'Direktorat Jenderal Kekayaan Intelektual',
+    tmtJabatan: '2014-01-16',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: 'III.a',
+    tmtEselon: '2014-01-16',
+    nomorPelantikan: '-',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'M.HH-79.KP.03.03 TAHUN 2015',
+    tanggalSk: '2015-01-18',
+    namaJabatan: 'KEPALA SUBDIREKTORAT KERJA SAMA LUAR NEGERI DIREKTORAT KERJA SAMA DAN PEMBERDAYAAN KEKAYAAN INTELEKTUAL',
+    unitKerja: 'DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL - DIREKTORAT KERJA SAMA DAN PEMBERDAYAAN KEKAYAAN INTELEKTUAL - KOORDINATOR KERJA SAMA LUAR NEGERI',
+    tmtJabatan: '2015-12-21',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'III.a',
+    tmtEselon: '2014-01-16',
+    nomorPelantikan: '-',
+    tanggalPelantikan: '2015-12-21'
+  },
+  {
+    nomorSk: 'SEK-14.KP.03.03',
+    tanggalSk: '2020-01-29',
+    namaJabatan: 'KEPALA BAGIAN PROGRAM DAN PELAPORAN SEKRETARIAT DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL',
+    unitKerja: 'DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL - SEKRETARIAT DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL - BAGIAN PROGRAM DAN PELAPORAN',
+    tmtJabatan: '2020-03-02',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: 'III.a',
+    tmtEselon: '',
+    nomorPelantikan: 'HKI.1-KP.04.05-56',
+    tanggalPelantikan: '2020-03-02'
+  },
+  {
+    nomorSk: 'M.HH-28.KP.03.03 TAHUN 2023',
+    tanggalSk: '2023-09-22',
+    namaJabatan: 'KEPALA DIVISI PELAYANAN HUKUM DAN HAM KANWIL KEMENTERIAN HUKUM DAN HAM BENGKULU',
+    unitKerja: 'BENGKULU - KANWIL KEMENTERIAN HUKUM DAN HAM BENGKULU - DIVISI PELAYANAN HUKUM DAN HAM',
+    tmtJabatan: '2023-10-02',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.b',
+    tmtEselon: '',
+    nomorPelantikan: 'W.8-KP.03.03-1563',
+    tanggalPelantikan: '2023-09-25'
+  },
+  {
+    nomorSk: 'M.HH-27.KP.03.03 TAHUN 2024',
+    tanggalSk: '2024-08-13',
+    namaJabatan: 'KEPALA DIVISI PELAYANAN HUKUM DAN HAK ASASI MANUSIA KANTOR WILAYAH KEMENTERIAN HUKUM DAN HAK ASASI MANUSIA JAWA BARAT',
+    unitKerja: 'JAWA BARAT - KANWIL KEMENTERIAN HUKUM DAN HAM JAWA BARAT - DIVISI PELAYANAN HUKUM DAN HAM',
+    tmtJabatan: '2024-08-27',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.b',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-438',
+    tanggalPelantikan: '2024-08-14'
+  },
+  {
+    nomorSk: 'M.HH-80.KP.03.03 TAHUN 2024',
+    tanggalSk: '2024-11-15',
+    namaJabatan: 'Sekretaris Direktorat Jenderal Kekayaan Intelektual',
+    unitKerja: 'Kementerian Hukum - Direktorat Jenderal Kekayaan Intelektual - Sekretariat Direktorat Jenderal Kekayaan Intelektual',
+    tmtJabatan: '2024-12-16',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-267',
+    tanggalPelantikan: '2024-11-18'
+  },
+  {
+    nomorSk: 'M.HH-80.KP.03.03 TAHUN 2024',
+    tanggalSk: '2024-11-15',
+    namaJabatan: 'Sekretaris Direktorat Jenderal Kekayaan Intelektual',
+    unitKerja: 'Kementerian Hukum - Direktorat Jenderal Kekayaan Intelektual - Sekretariat Direktorat Jenderal Kekayaan Intelektual',
+    tmtJabatan: '2024-12-16',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-267',
+    tanggalPelantikan: '2024-11-18'
+  },
+  {
+    nomorSk: 'M.HH-1.KP.03.03TAHUN2026',
+    tanggalSk: '2026-01-06',
+    namaJabatan: 'Direktur Paten, Desain Tata Letak Sirkuit Terpadu, dan Rahasia Dagang',
+    unitKerja: 'Kementerian Hukum - Direktorat Jenderal Kekayaan Intelektual - Direktorat Paten, Desain Tata Letak Sirkuit Terpadu, dan Rahasia Dagang',
+    tmtJabatan: '2026-01-08',
+    pejabatPenetap: 'Menteri Hukum dan Hak Asasi Manusia',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.12-43',
+    tanggalPelantikan: '2026-01-08'
+  }
+];
+
+export const ANDRIEANSJAH_PELATIHAN_DATA: RiwayatPelatihan[] = [
+  {
+    jenisDiklat: 'Prajabatan',
+    namaPelatihan: 'Prajabatan Umum Tingkat III',
+    angkatan: 'VI',
+    tahun: '2000',
+    tanggalMulai: '2000-07-14',
+    tanggalSelesai: '2000-08-12',
+    durasi: '182 Jam',
+    tempat: 'LAN',
+    penyelenggara: 'LAN',
+    nomorSertifikat: '09-0006/PRAJAB III/I/LAN/2000',
+    tanggalSertifikat: '2000-08-12',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Struktural (Diklatpim IV)',
+    namaPelatihan: 'Adum / Sepala / Diklatpim IV',
+    angkatan: 'CXLV',
+    tahun: '2009',
+    tanggalMulai: '2009-03-18',
+    tanggalSelesai: '2009-04-23',
+    durasi: '245 Jam',
+    tempat: 'BPSDM KEMENKUMHAM',
+    penyelenggara: 'BPSDM KEMENKUMHAM',
+    nomorSertifikat: '1.054/II.26/DIKLATPIM K. IV/LAN/2009',
+    tanggalSertifikat: '2009-04-23',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Struktural (Diklatpim III)',
+    namaPelatihan: 'Spama / Sepadya / Diklatpim III',
+    angkatan: 'Gel. 1',
+    tahun: '2015',
+    tanggalMulai: '2015-02-09',
+    tanggalSelesai: '2015-05-21',
+    durasi: '825 Jam',
+    tempat: 'Cinere - Depok',
+    penyelenggara: 'BPSDM Hukum dan HAM',
+    nomorSertifikat: '-',
+    tanggalSertifikat: '2015-05-21',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Struktural (Diklatpim II)',
+    namaPelatihan: 'Spamen / Diklatpim II (PKN Tk. II)',
+    angkatan: 'XXIV',
+    tahun: '2021',
+    tanggalMulai: '2021-08-19',
+    tanggalSelesai: '2021-12-11',
+    durasi: '887 Jam',
+    tempat: 'BPSDM Hukum dan HAM',
+    penyelenggara: 'LAN RI',
+    nomorSertifikat: '00001551/PKN TK. II/3004/016/LAN-KEMENKUMHAM/2021',
+    tanggalSertifikat: '2021-12-20',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Struktural (Diklatpim I)',
+    namaPelatihan: 'Sespa / Spati / Diklatpim I (PKN Tk. I)',
+    angkatan: 'LXVIII',
+    tahun: '2026',
+    tanggalMulai: '2026-06-29',
+    tanggalSelesai: '2026-11-19',
+    durasi: '935 Jam',
+    tempat: 'Jakarta',
+    penyelenggara: 'Lembaga Administrasi Negara',
+    nomorSertifikat: '-',
+    tanggalSertifikat: '-',
+    prestasi: '-'
+  },
+  {
+    jenisDiklat: 'Teknis',
+    namaPelatihan: 'Training Anti Bribery Management System Based on ISO 37001:2016',
+    angkatan: 'DJKI',
+    tahun: '2022',
+    tanggalMulai: '2022-06-27',
+    tanggalSelesai: '2022-06-28',
+    durasi: '16 Jam',
+    tempat: 'DJKI',
+    penyelenggara: 'DJKI',
+    nomorSertifikat: '-',
+    tanggalSertifikat: '2022-06-28',
+    prestasi: '-'
+  }
+];
+
+export const TESSA_HARUMDILA_JABATAN_DATA: RiwayatJabatan[] = [
+  {
+    nomorSk: 'SEK-302.KP.04.01 TH 2012',
+    tanggalSk: '2012-08-10',
+    namaJabatan: 'ATASE IMIGRASI',
+    unitKerja: 'Direktorat Jenderal Imigrasi',
+    tmtJabatan: '2012-08-10',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: '-',
+    tmtEselon: '',
+    nomorPelantikan: '-',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'SEK-06.KP.03.03 TAHUN 2016',
+    tanggalSk: '2016-04-15',
+    namaJabatan: 'KEPALA SUBBAGIAN KEPROTOKOLAN BIRO UMUM',
+    unitKerja: 'SEKRETARIAT JENDERAL - BIRO UMUM - BAGIAN PROTOKOL DAN PENGAMANAN - SUBBAGIAN KEPROTOKOLAN',
+    tmtJabatan: '2016-04-15',
+    pejabatPenetap: 'Sekretaris Jenderal',
+    eselon: 'IV.a',
+    tmtEselon: '2016-04-15',
+    nomorPelantikan: '-',
+    tanggalPelantikan: ''
+  },
+  {
+    nomorSk: 'SEK-47.KP.03.03',
+    tanggalSk: '2019-12-27',
+    namaJabatan: 'KEPALA BIDANG INTELIJEN DAN PENINDAKAN KEIMIGRASIAN KANIM KELAS I KHUSUS NON TPI JAKARTA BARAT',
+    unitKerja: 'DKI JAKARTA - KANIM KELAS I KHUSUS NON TPI JAKARTA BARAT',
+    tmtJabatan: '2020-01-13',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'III.b',
+    tmtEselon: '',
+    nomorPelantikan: 'W.10-KP.03.03-228',
+    tanggalPelantikan: '2020-01-08'
+  },
+  {
+    nomorSk: 'M.HH-16.KP.03.03 TAHUN 2021',
+    tanggalSk: '2021-01-22',
+    namaJabatan: 'KEPALA BIDANG TEKNOLOGI INFORMASI DAN KOMUNIKASI KEIMIGRASIAN KANIM KELAS I KHUSUS TPI BATAM',
+    unitKerja: 'KEPULAUAN RIAU - KANIM KELAS I KHUSUS TPI BATAM - BIDANG TEKNOLOGI INFORMASI DAN KOMUNIKASI KEIMIGRASIAN',
+    tmtJabatan: '2021-02-09',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'III.b',
+    tmtEselon: '',
+    nomorPelantikan: 'W.32.KP.03.03-1037',
+    tanggalPelantikan: '2021-02-09'
+  },
+  {
+    nomorSk: 'SEK-02.KP.03.03 TAHUN 2023',
+    tanggalSk: '2023-01-04',
+    namaJabatan: 'KEPALA BIDANG INTELIJEN DAN PENINDAKAN KEIMIGRASIAN KANTOR WILAYAH KEMENTERIAN HUKUM DAN HAK ASASI MANUSIA BANTEN',
+    unitKerja: 'BANTEN - KANWIL KEMENTERIAN HUKUM DAN HAM BANTEN - DIVISI KEIMIGRASIAN - BIDANG INTELIJEN DAN PENINDAKAN KEIMIGRASIAN',
+    tmtJabatan: '2023-01-24',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'III.a',
+    tmtEselon: '',
+    nomorPelantikan: 'W12.KP.04.01-71',
+    tanggalPelantikan: '2023-01-10'
+  },
+  {
+    nomorSk: 'M.HH-30.KP.03.03 TAHUN 2023',
+    tanggalSk: '2023-10-06',
+    namaJabatan: 'KEPALA BAGIAN PROTOKOL DAN PENGAMANAN BIRO UMUM',
+    unitKerja: 'SEKRETARIAT JENDERAL - BIRO UMUM - BAGIAN PROTOKOL DAN PENGAMANAN',
+    tmtJabatan: '2023-10-26',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'III.a',
+    tmtEselon: '',
+    nomorPelantikan: 'SEK.6-KP.03.03-04',
+    tanggalPelantikan: '2023-10-26'
+  },
+  {
+    nomorSk: 'M.HH-85.KP.03.03 TAHUN 2024',
+    tanggalSk: '2024-12-04',
+    namaJabatan: 'KEPALA DIVISI PERATURAN PERUNDANG-UNDANGAN DAN PEMBINAAN HUKUM KANTOR WILAYAH KEMENTERIAN HUKUM DAERAH KHUSUS JAKARTA',
+    unitKerja: 'Kementerian Hukum - Kantor Wilayah Kementerian Hukum Daerah Khusus Jakarta - Divisi Peraturan Perundang-undangan dan Pembinaan Hukum',
+    tmtJabatan: '2025-01-02',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'II.b',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.03.03-391',
+    tanggalPelantikan: '2024-12-04'
+  },
+  {
+    nomorSk: 'M.HH-1 .KP.03.03 TAHUN 2026',
+    tanggalSk: '2026-01-06',
+    namaJabatan: 'SEKRETARIS DIREKTORAT JENDERAL KEKAYAAN INTELEKTUAL',
+    unitKerja: 'Kementerian Hukum - Direktorat Jenderal Kekayaan Intelektual - Sekretariat Direktorat Jenderal Kekayaan Intelektual',
+    tmtJabatan: '2026-01-08',
+    pejabatPenetap: 'Menteri Hukum dan HAM',
+    eselon: 'II.a',
+    tmtEselon: '',
+    nomorPelantikan: 'M.HH-KP.12-41',
+    tanggalPelantikan: '2026-01-08'
+  }
+];
+
+export const ANDRIEANSJAH_PANGKAT_DATA: RiwayatPangkat[] = [
+  {
+    golRuang: 'III/a',
+    pangkat: 'Penata Muda',
+    tmtPangkat: '2000-03-01',
+    nomorSk: 'H.3-KP.04.01 Tahun 2000',
+    tanggalSk: '2000-07-17',
+    pejabatPenetap: 'Direktur Jenderal Hak Kekayaan Intelektual',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 0,
+    masaKerjaBulan: 0,
+    keterangan: 'CPNS'
+  },
+  {
+    golRuang: 'III/a',
+    pangkat: 'Penata Muda',
+    tmtPangkat: '2001-11-01',
+    nomorSk: 'H.3-KP.04.02 TAHUN 2001',
+    tanggalSk: '2001-10-11',
+    pejabatPenetap: 'Direktur Jenderal Hak Kekayaan Intelektual',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 1,
+    masaKerjaBulan: 4,
+    keterangan: 'PNS'
+  },
+  {
+    golRuang: 'III/b',
+    pangkat: 'Penata Muda Tingkat I',
+    tmtPangkat: '2004-04-01',
+    nomorSk: 'H.19-KP.04.05 TAHUN 2004',
+    tanggalSk: '2004-03-29',
+    pejabatPenetap: 'Direktur Jenderal Hak Kekayaan Intelektual',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 4,
+    masaKerjaBulan: 1,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/c',
+    pangkat: 'Penata',
+    tmtPangkat: '2008-04-01',
+    nomorSk: 'HKI.68-KP.04.04 TAHUN 2008',
+    tanggalSk: '2008-05-29',
+    pejabatPenetap: 'Direktur Jenderal Hak Kekayaan Intelektual',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 8,
+    masaKerjaBulan: 1,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'III/d',
+    pangkat: 'Penata Tingkat I',
+    tmtPangkat: '2012-04-01',
+    nomorSk: 'HKI1.03.KP.04.04 TAHUN 2012',
+    tanggalSk: '2012-03-30',
+    pejabatPenetap: 'Direktur Jenderal Hak Kekayaan Intelektual',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 12,
+    masaKerjaBulan: 1,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/a',
+    pangkat: 'Pembina',
+    tmtPangkat: '2015-04-01',
+    nomorSk: 'M.HH-323.KP.04.04 TAHUN 2015',
+    tanggalSk: '2015-03-31',
+    pejabatPenetap: 'Kepala Biro Kepegawaian',
+    jenisKp: 'Pilihan (Struktural)',
+    masaKerjaTahun: 15,
+    masaKerjaBulan: 1,
+    keterangan: 'KP'
+  },
+  {
+    golRuang: 'IV/b',
+    pangkat: 'Pembina Tingkat I',
+    tmtPangkat: '2019-04-01',
+    nomorSk: 'SEK.2-588.KP.04.05 TAHUN 2019',
+    tanggalSk: '2019-03-27',
+    pejabatPenetap: 'a.n. Menteri Hukum dan HAM RI',
+    jenisKp: 'Reguler',
+    masaKerjaTahun: 19,
+    masaKerjaBulan: 1,
+    keterangan: 'KP WS'
+  },
+  {
+    golRuang: 'IV/c',
+    pangkat: 'Pembina Utama Muda',
+    tmtPangkat: '2024-04-01',
+    nomorSk: '00108/KEP/AA/15001/24',
+    tanggalSk: '2024-02-29',
+    pejabatPenetap: 'Kepala BKN',
+    jenisKp: 'Pilihan (Struktural)',
+    masaKerjaTahun: 24,
+    masaKerjaBulan: 1,
+    keterangan: 'KP SIASN'
+  }
+];
+
+export const ANDRIEANSJAH_PENDIDIKAN_DATA: RiwayatPendidikan[] = [
+  {
+    jenjang: 'SD',
+    institusi: '-',
+    namaSekolah: '-',
+    jurusan: '-',
+    tahunLulus: '-',
+    nomorIjazah: '-',
+    tanggalIjazah: '',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'SMP/SLTP',
+    institusi: '-',
+    namaSekolah: '-',
+    jurusan: '-',
+    tahunLulus: '-',
+    nomorIjazah: '-',
+    tanggalIjazah: '',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'SMA/SMU/SMK',
+    institusi: '-',
+    namaSekolah: '-',
+    jurusan: '-',
+    tahunLulus: '-',
+    nomorIjazah: '-',
+    tanggalIjazah: '',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'S1',
+    institusi: '-',
+    namaSekolah: '-',
+    jurusan: 'TEKNIK',
+    tahunLulus: '-',
+    nomorIjazah: '-',
+    tanggalIjazah: '',
+    pemakaianIjazah: '-'
+  },
+  {
+    jenjang: 'S1',
+    institusi: 'UNIVERSITAS 17 AGUSTUS 1945',
+    namaSekolah: 'UNIVERSITAS 17 AGUSTUS 1945',
+    jurusan: 'ILMU HUKUM',
+    tahunLulus: '2010',
+    nomorIjazah: '1030035',
+    tanggalIjazah: '2010-05-07',
+    pemakaianIjazah: 'Pertama'
+  },
+  {
+    jenjang: 'S2',
+    institusi: 'UNIVERSITAS TRISAKTI',
+    namaSekolah: 'UNIVERSITAS TRISAKTI',
+    jurusan: 'MANAJEMEN',
+    tahunLulus: '2004',
+    nomorIjazah: '0086/MM/S2/IX/2004',
+    tanggalIjazah: '2004-09-29',
+    pemakaianIjazah: 'Pertama'
+  },
+  {
+    jenjang: 'S3',
+    institusi: 'UNIVERSITAS PADJADJARAN',
+    namaSekolah: 'UNIVERSITAS PADJADJARAN',
+    jurusan: 'ILMU HUKUM',
+    tahunLulus: '2013',
+    nomorIjazah: 'UN6.0002847/A30.000542',
+    tanggalIjazah: '2013-02-22',
+    pemakaianIjazah: 'Pertama'
+  }
+];
+
+export const YASMON_PENDIDIKAN_DATA: RiwayatPendidikan[] = [
+  {
+    jenjang: 'SD',
+    institusi: 'SD Negeri 1',
+    namaSekolah: 'SD Negeri 1',
+    jurusan: '-',
+    alamatSekolah: 'Saningbakar',
+    kepalaSekolah: 'Nursal Saleh',
+    nomorIjazah: '08 OA oa 009606',
+    tanggalIjazah: '1981-05-16',
+    tahunLulus: '1981',
+    pemakaianIjazah: 'Pertama'
+  },
+  {
+    jenjang: 'SMP/SLTP',
+    institusi: 'SMP Negeri 1',
+    namaSekolah: 'SMP Negeri 1',
+    jurusan: '-',
+    alamatSekolah: 'Solok',
+    kepalaSekolah: 'Anizar',
+    nomorIjazah: '08 OB ob 0485761',
+    tanggalIjazah: '1984-05-17',
+    tahunLulus: '1984',
+    pemakaianIjazah: 'Pertama'
+  },
+  {
+    jenjang: 'SMA/SMU/SMK',
+    institusi: 'SMA Negeri 1',
+    namaSekolah: 'SMA Negeri 1',
+    jurusan: 'A1 (Fisika)',
+    alamatSekolah: 'Solok',
+    kepalaSekolah: 'Drs. Nazir Bustami',
+    nomorIjazah: '08 OC oh 0043707',
+    tanggalIjazah: '1987-06-02',
+    tahunLulus: '1987',
+    pemakaianIjazah: 'Pertama'
+  },
+  {
+    jenjang: 'S1',
+    institusi: 'Universitas Andalas',
+    namaSekolah: 'Universitas Andalas',
+    jurusan: 'Bahasa dan Sastra Inggris',
+    alamatSekolah: 'Padang',
+    kepalaSekolah: 'Prof. Dr. Ir. H. Jurnalis Kamil',
+    nomorIjazah: '13377/0122/F.01/S1/1991',
+    tanggalIjazah: '1991-12-14',
+    tahunLulus: '1991',
+    pemakaianIjazah: 'Penerimaan CPNS'
+  },
+  {
+    jenjang: 'S2',
+    institusi: 'Faculty of Law, Univ. of Technology Sydney',
+    namaSekolah: 'Faculty of Law, Univ. of Technology Sydney',
+    jurusan: 'Intellectual & Industrial Property Law',
+    alamatSekolah: 'Australia',
+    kepalaSekolah: 'Prof. AJD Blake',
+    nomorIjazah: '-',
+    tanggalIjazah: '1999-09-30',
+    tahunLulus: '1999',
+    pemakaianIjazah: 'Pertama'
+  }
+];
+
+export const SIMPEG_PENGHARGAAN_DATA: any[] = [
+  {
+    namaPenghargaan: 'Satyalancana Karya Satya XX Tahun',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    nomorSk: '64/TK/TAHUN 2020',
+    tanggalSk: '2020-08-04',
+    tahun: '2020',
+    keterangan: 'Penganugerahan Tanda Kehormatan Satyalancana Karya Satya Pengabdian 20 Tahun'
+  },
+  {
+    namaPenghargaan: 'Satyalancana Karya Satya X Tahun',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    nomorSk: '39/TK/TAHUN 2010',
+    tanggalSk: '2010-08-05',
+    tahun: '2010',
+    keterangan: 'Penganugerahan Tanda Kehormatan Satyalancana Karya Satya Pengabdian 10 Tahun'
+  },
+  {
+    namaPenghargaan: 'Piagam Penghargaan Pegawai Berprestasi Kementerian Hukum dan HAM',
+    jenisPenghargaan: 'Kementerian Hukum',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia RI',
+    nomorSk: 'M.HH-01.KP.07.05 TAHUN 2022',
+    tanggalSk: '2022-10-30',
+    tahun: '2022',
+    keterangan: 'Peringatan Hari Pengayoman atas Inovasi Layanan Publik DJKI'
+  },
+  {
+    namaPenghargaan: 'Penghargaan Pembangunan Zona Integritas Menuju WBK/WBBM',
+    jenisPenghargaan: 'Direktorat Jenderal KI',
+    pemberiPenghargaan: 'Direktur Jenderal Kekayaan Intelektual',
+    nomorSk: 'HKI-03.KP.08.01 TAHUN 2023',
+    tanggalSk: '2023-11-15',
+    tahun: '2023',
+    keterangan: 'Apresiasi Tim Pokja Pelayanan Publik dan Transformasi Digital DJKI'
+  }
+];
+
+export const ANDRIEANSJAH_PENGHARGAAN_DATA: any[] = [
+  {
+    namaPenghargaan: 'Satyalancana Karya Satya XX Tahun',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    nomorSk: '64/TK/TAHUN 2020',
+    tanggalSk: '2020-08-04',
+    tahun: '2020',
+    keterangan: 'Penganugerahan Tanda Kehormatan Satyalancana Karya Satya atas Pengabdian 20 Tahun'
+  },
+  {
+    namaPenghargaan: 'Satyalancana Karya Satya X Tahun',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    nomorSk: '39/TK/TAHUN 2010',
+    tanggalSk: '2010-08-05',
+    tahun: '2010',
+    keterangan: 'Penganugerahan Tanda Kehormatan Satyalancana Karya Satya atas Pengabdian 10 Tahun'
+  },
+  {
+    namaPenghargaan: 'Piagam Penghargaan Kontribusi Aksesi Traktat Paten Internasional (PCT)',
+    jenisPenghargaan: 'Kementerian Hukum',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia RI',
+    nomorSk: 'M.HH-04.KP.07.01 TAHUN 2021',
+    tanggalSk: '2021-12-10',
+    tahun: '2021',
+    keterangan: 'Dedikasi atas Peningkatan Sistem Permohonan Paten Nasional dan Internasional'
+  }
+];
+
+export const SIMPEG_2015_RAW_TEXT = `SATYA LENCANA KARYA SATYA XX (PERAK)
+55/TK/TAHUN 2015
+16/06/2015
+Presiden Republik Indonesia
+2016
+PENGHARGAAN LAIN
+-
+26/01/2016
+Menteri Hukum dan Hak Asasi Manusia
+2017
+PENGHARGAAN LAIN
+25/B/KP/XI/2017/01
+01/01/2017
+Lainnya
+2018
+PENGHARGAAN LAIN
+-
+26/01/2018
+Menteri Hukum dan Hak Asasi Manusia
+2022
+SATYA LENCANA WIRA KARYA PRESIDEN RI
+56 /TK/TAHUN 2022
+02/08/2022
+Presiden Republik Indonesia
+2022
+PENGHARGAAN LAIN
+M.HH-08.KP.05.03 Tahun 2022
+16/08/2022
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+-
+07/08/2022
+Lainnya
+2022
+PENGHARGAAN LAIN
+M.HH-08.KP.05.03 Tahun 2022
+16/08/2022
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+M.HH-08.KP.05.03 Tahun 2022
+16/08/2022
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+M.HH-08.KP.05.03 Tahun 2022
+16/08/2022
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+kkk
+07/12/2023
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+1
+16/08/2022
+Menteri Hukum dan Hak Asasi Manusia
+2022
+PENGHARGAAN LAIN
+eee
+15/12/2023
+Menteri Hukum dan Hak Asasi Manusia
+2023
+PENGHARGAAN LAIN
+M.H-H-06.KP.05.03
+18/08/2024
+Menteri Hukum dan Hak Asasi Manusia
+2023
+PENGHARGAAN LAIN
+-
+08/11/2023
+a.n. Menteri Hukum dan HAM`;
+
+export const SIMPEG_2015_PENGHARGAAN_SAMPLE: any[] = [
+  {
+    namaPenghargaan: 'SATYA LENCANA KARYA SATYA XX (PERAK)',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    nomorSk: '55/TK/TAHUN 2015',
+    tanggalSk: '2015-06-16',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    tahun: '2015',
+    keterangan: 'Tanda Kehormatan Satyalancana Karya Satya XX (Perak)'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: '-',
+    tanggalSk: '2016-01-26',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2016',
+    keterangan: 'Penghargaan Lain Kementerian Hukum dan HAM'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Lainnya',
+    nomorSk: '25/B/KP/XI/2017/01',
+    tanggalSk: '2017-01-01',
+    pemberiPenghargaan: 'Lainnya',
+    tahun: '2017',
+    keterangan: 'Penghargaan Lain Instansi'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: '-',
+    tanggalSk: '2018-01-26',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2018',
+    keterangan: 'Penghargaan Lain Kementerian Hukum dan HAM'
+  },
+  {
+    namaPenghargaan: 'SATYA LENCANA WIRA KARYA PRESIDEN RI',
+    jenisPenghargaan: 'Tanda Kehormatan RI',
+    nomorSk: '56 /TK/TAHUN 2022',
+    tanggalSk: '2022-08-02',
+    pemberiPenghargaan: 'Presiden Republik Indonesia',
+    tahun: '2022',
+    keterangan: 'Tanda Kehormatan Satyalancana Wira Karya Presiden RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'M.HH-08.KP.05.03 Tahun 2022',
+    tanggalSk: '2022-08-16',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Lainnya',
+    nomorSk: '-',
+    tanggalSk: '2022-08-07',
+    pemberiPenghargaan: 'Lainnya',
+    tahun: '2022',
+    keterangan: 'Penghargaan Lainnya'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'M.HH-08.KP.05.03 Tahun 2022',
+    tanggalSk: '2022-08-16',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'M.HH-08.KP.05.03 Tahun 2022',
+    tanggalSk: '2022-08-16',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'M.HH-08.KP.05.03 Tahun 2022',
+    tanggalSk: '2022-08-16',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'kkk',
+    tanggalSk: '2023-12-07',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: '1',
+    tanggalSk: '2022-08-16',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'eee',
+    tanggalSk: '2023-12-15',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2022',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: 'M.H-H-06.KP.05.03',
+    tanggalSk: '2024-08-18',
+    pemberiPenghargaan: 'Menteri Hukum dan Hak Asasi Manusia',
+    tahun: '2023',
+    keterangan: 'Penghargaan Menkumham RI'
+  },
+  {
+    namaPenghargaan: 'PENGHARGAAN LAIN',
+    jenisPenghargaan: 'Kementerian Hukum',
+    nomorSk: '-',
+    tanggalSk: '2023-11-08',
+    pemberiPenghargaan: 'a.n. Menteri Hukum dan HAM',
+    tahun: '2023',
+    keterangan: 'Penghargaan a.n. Menkumham'
+  }
+];
+
+
+
+
+

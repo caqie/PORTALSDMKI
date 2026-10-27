@@ -1,0 +1,8 @@
+name = "portalsdm"
+compatibility_date = "2024-09-23"
+
+# Cloudflare Workers & Pages Static Assets configuration
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"

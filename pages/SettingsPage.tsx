@@ -1,0 +1,1698 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { AdminUser, MaintenanceConfig, CloudConfig, AbsensiConfig, Pegawai, SystemConfig, PageAccess, normalizeRolesList } from '../types';
+import { fetchUsersFromSheets, uploadFileToDrive, syncTableRemote, syncGidMap, fetchAbsensiConfig, saveAbsensiConfig, fetchPegawaiFromSheets, fetchSystemConfig, saveSystemConfig, auditSpreadsheet, deleteSheetRemote, EXPECTED_COLUMNS_SCHEMA, saveSharedConfigToServer, parseDateToYYYYMMDD, cleanupEmptyRowsRemote } from '../spreadsheetService';
+import * as XLSX from 'xlsx';
+import { safeJsonToSheet, safeWriteExcel } from '../lib/excelSanitizer';
+import { useAuth } from '../AuthContext';
+import { DEFAULT_LOGO, DEFAULT_TEMPLATE_LOGO, APP_ROUTES, UNIT_KERJA, PANGKAT_MAP } from '../constants';
+import SuccessModal from '../components/SuccessModal';
+
+export const ALL_SYSTEM_ROLES = [
+  { id: 'Superadmin', label: 'Superadmin', desc: 'Akses penuh ke seluruh sistem & konfigurasi cloud', color: 'bg-slate-900 text-white border-slate-900' },
+  { id: 'Admin Perencanaan & Layanan', label: 'Admin Perencanaan & Layanan', desc: 'Roadmap SDM, ABK/ANJAB, SPMT, Presensi, SAKIP/RB, Anggaran', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { id: 'Admin Pengembangan Kompetensi', label: 'Admin Pengembangan Kompetensi', desc: 'TNA, Bimtek/Diklat, Ujian Dinas, Tugas Belajar, Magang, CAT Ukom, Talenta 9-Box', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { id: 'Admin Pengelolaan Karier', label: 'Admin Pengelolaan Karier', desc: 'Disiplin PP 94, Kode Etik, LHKASN, SKP, PAK, Pangkat, KGB, Pensiun, Satyalancana', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  { id: 'Admin Uang Makan', label: 'Admin Uang Makan', desc: 'Perhitungan & Rekapitulasi Uang Makan Pegawai', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  { id: 'Editor', label: 'Editor', desc: 'Akses pengeditan data operasional umum', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { id: 'Viewer', label: 'Viewer', desc: 'Hanya melihat data (Pegawai/Staf)', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+];
+
+const SettingsPage = () => {
+  const { isSuperadmin, logActivity, user: currentUser, canEdit, updateUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('general');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [syncingGid, setSyncingGid] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [auditResults, setAuditResults] = useState<any[]>([]);
+  
+  const appLogoInputRef = useRef<HTMLInputElement>(null);
+  const templateLogoInputRef = useRef<HTMLInputElement>(null);
+  const importExcelInputRef = useRef<HTMLInputElement>(null);
+  const bulkPhotoInputRef = useRef<HTMLInputElement>(null);
+  
+  const [systemName, setSystemName] = useState(localStorage.getItem('portal_system_name') || 'Portal SDM');
+  const [runningTextValue, setRunningTextValue] = useState(localStorage.getItem('portal_running_text') || 'Selamat Datang di Portal SDM DJKI.');
+  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('portal_system_logo') || DEFAULT_LOGO);
+  const [templateLogo, setTemplateLogo] = useState<string>(localStorage.getItem('portal_template_logo') || DEFAULT_TEMPLATE_LOGO);
+  
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
+  const [absensiConfig, setAbsensiConfig] = useState<AbsensiConfig>({ id: 'ABSENSI_GLOBAL', officeWifiSsid: '', officeIpAddresses: '', wfaNips: [] });
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({ maintenance: { all: false, pages: [] }, pageAccess: [] });
+  const [wfaSearch, setWfaSearch] = useState('');
+  const [accessSearch, setAccessSearch] = useState('');
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [userFormData, setUserFormData] = useState<Partial<AdminUser>>({ role: 'Viewer' });
+
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [duplicateNips, setDuplicateNips] = useState<string[]>([]);
+  const [invalidItems, setInvalidItems] = useState<{id: string, nip: string, nama: string}[]>([]);
+  const [cleanupProgress, setCleanupProgress] = useState({ current: 0, total: 0, active: false });
+  const [bulkPhotoProgress, setBulkPhotoProgress] = useState({ current: 0, total: 0, active: false });
+
+  const [dbConfig, setDbConfig] = useState({
+    spreadsheetId: localStorage.getItem('db_spreadsheet_id') || '1Bh77MMU8d6fgNTKhovLE5MkG0-3CjW9cNXRZl2GyPR4',
+    appsScriptUrl: JSON.parse(localStorage.getItem('portal_cloud_config') || '{}').appsScriptUrl || '',
+    driveFolderId: JSON.parse(localStorage.getItem('portal_cloud_config') || '{}').driveFolderId || ''
+  });
+
+  const [showScriptModal, setShowScriptModal] = useState(false);
+  const [scriptCode, setScriptCode] = useState<string>('');
+  const [loadingScript, setLoadingScript] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+
+  useEffect(() => { loadSettingsData(); }, [activeTab]);
+
+  const loadSettingsData = async () => {
+    setLoading(true);
+    try {
+      // Selalu muat konfigurasi sistem global dan branding dari Google Sheets
+      const config = await fetchSystemConfig();
+      setSystemConfig(config);
+      if (config.systemName) setSystemName(config.systemName);
+      if (config.runningText) setRunningTextValue(config.runningText);
+      if (config.systemLogo) setAppLogo(config.systemLogo);
+      if (config.templateLogo) setTemplateLogo(config.templateLogo);
+
+      if (activeTab === 'users') { const u = await fetchUsersFromSheets(); setUsers(u); }
+      if (activeTab === 'absensi') {
+        const [absConfig, pList] = await Promise.all([fetchAbsensiConfig(), fetchPegawaiFromSheets()]);
+        setAbsensiConfig(absConfig);
+        setPegawaiList(pList);
+      }
+      if (activeTab === 'management') {
+         const p = await fetchPegawaiFromSheets(true);
+         setPegawaiList(p);
+         findDuplicatesAndInvalids(p);
+      }
+    } catch (e) { console.error("Gagal memuat data pengaturan:", e); }
+    setLoading(false);
+  };
+
+  const saveSystemSettings = async () => {
+    setLoading(true);
+    const ok = await saveSystemConfig(systemConfig);
+    if (ok) {
+      setSuccessMsg("Pengaturan Akses & Pemeliharaan Berhasil Disimpan.");
+      setShowSuccess(true);
+      logActivity('UPDATE', 'Settings', 'Update Pengaturan Akses & Pemeliharaan');
+    } else {
+      alert("Gagal menyimpan pengaturan sistem.");
+    }
+    setLoading(false);
+  };
+
+  const toggleMaintenancePage = (path: string) => {
+    setSystemConfig(prev => {
+      const maintenance = prev?.maintenance || { all: false, pages: [] };
+      const pages = maintenance.pages || [];
+      const exists = pages.includes(path);
+      const newPages = exists 
+        ? pages.filter(p => p !== path)
+        : [...pages, path];
+      return { ...prev, maintenance: { ...maintenance, pages: newPages } };
+    });
+  };
+
+  const updatePageAccess = (path: string, field: 'roles' | 'nips', value: string) => {
+    setSystemConfig(prev => {
+      const pageAccess = prev?.pageAccess || [];
+      const existing = pageAccess.find(a => a.route === path);
+      const values = value.split(',').map(v => v.trim()).filter(v => v !== '');
+      
+      let newAccess: PageAccess[];
+      if (existing) {
+        newAccess = pageAccess.map(a => a.route === path ? { ...a, [field]: values } : a);
+      } else {
+        newAccess = [...pageAccess, { route: path, roles: field === 'roles' ? values : [], nips: field === 'nips' ? values : [] }];
+      }
+      return { ...prev, pageAccess: newAccess };
+    });
+  };
+
+  const toggleRoleAccess = (path: string, role: string) => {
+    setSystemConfig(prev => {
+      const pageAccess = prev?.pageAccess || [];
+      const existing = pageAccess.find(a => a.route === path);
+      let newAccess: PageAccess[];
+      
+      if (existing) {
+        const roles = (existing.roles || []).includes(role)
+          ? (existing.roles || []).filter(r => r !== role)
+          : [...(existing.roles || []), role];
+        newAccess = pageAccess.map(a => a.route === path ? { ...a, roles } : a);
+      } else {
+        newAccess = [...pageAccess, { route: path, roles: [role], nips: [] }];
+      }
+      return { ...prev, pageAccess: newAccess };
+    });
+  };
+
+  const bulkRoleAccess = (path: string, action: 'all' | 'none') => {
+    setSystemConfig(prev => {
+      const pageAccess = prev?.pageAccess || [];
+      const existing = pageAccess.find(a => a.route === path);
+      const allRoles = ALL_SYSTEM_ROLES.map(r => r.id);
+      let newAccess: PageAccess[];
+      
+      if (existing) {
+        newAccess = pageAccess.map(a => a.route === path ? { ...a, roles: action === 'all' ? allRoles : [] } : a);
+      } else {
+        newAccess = [...pageAccess, { route: path, roles: action === 'all' ? allRoles : [], nips: [] }];
+      }
+      return { ...prev, pageAccess: newAccess };
+    });
+  };
+
+  const handleUploadLogo = async (type: 'APP' | 'TEMPLATE', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const res = await uploadFileToDrive(`LOGO_${type}_${Date.now()}`, file.type, base64);
+      if (res.success && res.fileUrl) {
+        if (type === 'APP') setAppLogo(res.fileUrl);
+        else setTemplateLogo(res.fileUrl);
+        setSuccessMsg(`Logo ${type === 'APP' ? 'Aplikasi' : 'Kop Surat'} berhasil diunggah.`);
+        setShowSuccess(true);
+      } else if (res.message) {
+        alert(res.message);
+      }
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveGeneralSettings = async () => {
+    setLoading(true);
+    try {
+      // 1. Simpan ke Local Storage untuk response langsung (instant rendering)
+      localStorage.setItem('portal_system_name', systemName);
+      localStorage.setItem('portal_running_text', runningTextValue);
+      localStorage.setItem('portal_system_logo', appLogo);
+      localStorage.setItem('portal_template_logo', templateLogo);
+      window.dispatchEvent(new Event('storage_updated'));
+
+      // 2. Simpan secara remote ke Google Sheets via CONFIG (id: SYSTEM_CONFIG)
+      const updatedConfig = {
+        ...systemConfig,
+        systemName,
+        runningText: runningTextValue,
+        systemLogo: appLogo,
+        templateLogo
+      };
+
+      const ok = await saveSystemConfig(updatedConfig);
+      if (ok) {
+        setSystemConfig(updatedConfig);
+        setSuccessMsg("Pengaturan Branding & Teks Berhasil Disimpan Ke Database.");
+        setShowSuccess(true);
+        logActivity('UPDATE', 'Settings', 'Update Branding & Teks Sistem');
+      } else {
+        alert("Gagal menyimpan ke basis data.");
+      }
+    } catch (e) {
+      console.error("Gagal menyimpan pengaturan branding:", e);
+      alert("Terjadi kesalahan saat menyimpan pengaturan branding.");
+    }
+    setLoading(false);
+  };
+
+  const saveCloudConfig = async () => {
+    localStorage.setItem('db_spreadsheet_id', dbConfig.spreadsheetId);
+    localStorage.setItem('portal_cloud_config', JSON.stringify({ appsScriptUrl: dbConfig.appsScriptUrl, driveFolderId: dbConfig.driveFolderId }));
+    
+    // Save to server so other users automatically get this configuration
+    await saveSharedConfigToServer(dbConfig.spreadsheetId, dbConfig.appsScriptUrl, dbConfig.driveFolderId);
+
+    window.dispatchEvent(new Event('storage_updated'));
+    setSuccessMsg("Konfigurasi Database & Drive Berhasil Disimpan.");
+    setShowSuccess(true);
+    logActivity('UPDATE', 'Settings', 'Update Konfigurasi Cloud Database');
+  };
+
+  const handleSyncGid = async () => {
+    setSyncingGid(true);
+    const ok = await syncGidMap();
+    if (ok) {
+        setSuccessMsg("Peta GID Spreadsheet Berhasil Disinkronkan.");
+        setShowSuccess(true);
+    } else {
+        alert("Gagal sinkronisasi GID. Periksa Apps Script URL.");
+    }
+    setSyncingGid(false);
+  };
+
+  const handleAudit = async () => {
+    setAuditing(true);
+    try {
+      const results = await auditSpreadsheet();
+      setAuditResults(results);
+      if (results.length === 0) alert("Audit selesai, tidak ada sheet yang ditemukan.");
+    } catch (e) {
+      alert("Gagal melakukan audit spreadsheet.");
+    }
+    setAuditing(false);
+  };
+
+  const openScriptGuide = async () => {
+    setShowScriptModal(true);
+    if (!scriptCode) {
+      setLoadingScript(true);
+      try {
+        const res = await fetch('/api/apps-script-code');
+        if (res.ok) {
+          const text = await res.text();
+          setScriptCode(text);
+        } else {
+          setScriptCode('// Silakan buka file GoogleAppsScript_Code.js di root proyek untuk menyalin kode lengkap.');
+        }
+      } catch (e) {
+        setScriptCode('// Silakan buka file GoogleAppsScript_Code.js di root proyek untuk menyalin kode lengkap.');
+      } finally {
+        setLoadingScript(false);
+      }
+    }
+  };
+
+  const copyScriptToClipboard = () => {
+    if (scriptCode) {
+      navigator.clipboard.writeText(scriptCode);
+      setCopiedScript(true);
+      setTimeout(() => setCopiedScript(false), 3000);
+    }
+  };
+
+  const downloadScriptFile = () => {
+    if (!scriptCode) return;
+    const blob = new Blob([scriptCode], { type: 'text/javascript;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Code.gs';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteSheet = async (sheetId: string, sheetName: string) => {
+    if (!confirm(`HAPUS SHEET "${sheetName}"? Tindakan ini permanen.`)) return;
+    setLoading(true);
+    const ok = await deleteSheetRemote(sheetId);
+    if (ok) {
+        setSuccessMsg(`Sheet "${sheetName}" berhasil dihapus.`);
+        setShowSuccess(true);
+        handleAudit(); // Refresh audit
+    } else {
+        alert("Gagal menghapus sheet.");
+    }
+    setLoading(false);
+  };
+
+  const handleFixSheet = async (sheetName: string) => {
+    const schema = (EXPECTED_COLUMNS_SCHEMA as any)[sheetName.toUpperCase()];
+    if (!schema) return;
+    
+    setLoading(true);
+    // Smart Sync will create missing columns if we send a dummy SAVE request
+    // with all expected keys but dummy data or partial update
+    const dummyPayload: any = { id: `INIT-${Date.now()}` };
+    schema.forEach((col: string) => {
+        dummyPayload[col.toLowerCase().replace(/[\s_]/g, '')] = "";
+    });
+    
+    // We send a SAVE with dummy data, its the easiest way to trigger getOrCreateSheet with headers
+    const ok = await syncTableRemote(sheetName, 'SAVE', dummyPayload);
+    if (ok) {
+        // Immediately DELETE the dummy row
+        await syncTableRemote(sheetName, 'DELETE', { id: dummyPayload.id });
+        setSuccessMsg(`Sheet "${sheetName}" telah diperbaiki dengan kolom standar.`);
+        setShowSuccess(true);
+        handleAudit();
+    } else {
+        alert("Gagal memperbaiki sheet.");
+    }
+    setLoading(false);
+  };
+
+  const downloadExcelTemplate = () => {
+    const headers = [
+      'NIP', 'NAMA', 'JABATAN', 'UNIT KERJA', 'GOL RUANG', 'JENIS PEGAWAI', 'STATUS', 
+      'TEMPAT LAHIR', 'TANGGAL LAHIR', 'GENDER (L/P)', 'AGAMA', 'ALAMAT', 'EMAIL', 
+      'NO HP', 'PENDIDIKAN', 'JURUSAN', 'NIK', 'NPWP', 'NO BPJS', 'NO REKENING GAJI', 'NAMA BANK'
+    ];
+    const sampleData = [
+      {
+        'NIP': '198001012010011001',
+        'NAMA': 'NAMA PEGAWAI CONTOH',
+        'JABATAN': 'PRANATA KOMPUTER AHLI PERTAMA',
+        'UNIT KERJA': 'DIREKTORAT TEKNOLOGI INFORMASI',
+        'GOL RUANG': 'III/a',
+        'JENIS PEGAWAI': 'PNS',
+        'STATUS': 'AKTIF',
+        'TEMPAT LAHIR': 'JAKARTA',
+        'TANGGAL LAHIR': '1980-01-01',
+        'GENDER (L/P)': 'L',
+        'AGAMA': 'ISLAM',
+        'ALAMAT': 'JL. HR RASUNA SAID KAV 6-7, JAKARTA SELATAN',
+        'EMAIL': 'pegawai@kemenkumham.go.id',
+        'NO HP': '081234567890',
+        'PENDIDIKAN': 'S-1',
+        'JURUSAN': 'TEKNIK INFORMATIKA',
+        'NIK': '3171010101800001',
+        'NPWP': '01.234.567.8-012.000',
+        'NO BPJS': '000123456789',
+        'NO REKENING GAJI': '1234567890',
+        'NAMA BANK': 'BANK SUMUT'
+      }
+    ];
+    
+    const ws = safeJsonToSheet(sampleData, { header: headers });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Import_Pegawai");
+    safeWriteExcel(wb, "Template_Import_Pegawai.xlsx");
+  };
+
+  const findDuplicatesAndInvalids = (list: Pegawai[]) => {
+    const counts = new Map<string, number>();
+    const invItems: {id: string, nip: string, nama: string}[] = [];
+    list.forEach((p, idx) => {
+      const nip = (p.nip || '').replace(/\D/g, '');
+      const nama = (p.nama || '').trim();
+      const isActuallyEmpty = (!nama || nama === '(NAMA KOSONG)') && !nip;
+      const upperNama = nama.toUpperCase();
+      const isShort = nama.length < 8;
+      const degreeTitles = ['S.T', 'S.H', 'S.E', 'M.H', 'M.T', 'S.SI', 'A.MD', 'DRS', 'DRA', 'PROF', 'DR.'];
+      const isDegreeInitials = isShort && degreeTitles.some(d => upperNama.startsWith(d));
+      const isAddress = upperNama.includes('PONDOK') || upperNama.includes('JALAN') || upperNama.includes('KEC.') || upperNama.includes('KAB.');
+      const isSuspectedShift = isDegreeInitials && nama.length < 6;
+      const badData = (!nip && (nama.length < 3 || isActuallyEmpty || isDegreeInitials || isAddress)) || (nip.length > 0 && nip.length < 8) || isSuspectedShift;
+      if (isActuallyEmpty || badData) invItems.push({ id: p.id, nip: p.nip || '-', nama: p.nama || '(Nama Kosong)' });
+      if (nip && nip.length >= 8) counts.set(nip, (counts.get(nip) || 0) + 1);
+    });
+    const dups = Array.from(counts.entries()).filter(([_, count]) => count > 1).map(([nip]) => nip);
+    setDuplicateNips(dups);
+    setInvalidItems(invItems);
+  };
+
+  const handleCleanupData = async () => {
+    const totalToClean = duplicateNips.length + invalidItems.length;
+    if (totalToClean === 0) { alert("Tidak ada data duplikat atau bermasalah yang ditemukan."); return; }
+    if (!confirm(`Ditemukan ${duplicateNips.length} NIP duplikat dan ${invalidItems.length} data tidak valid. Benahi data secara otomatis?`)) return;
+    setSyncing(true);
+    setCleanupProgress({ current: 0, total: totalToClean, active: true });
+    let removed = 0;
+    try {
+      const currentListRaw = await fetchPegawaiFromSheets(true);
+      const currentList = currentListRaw.map(p => ({ ...p, cleanNip: (p.nip || '').replace(/\D/g, '') }));
+      const processedIds = new Set<string>();
+      for (let i = 0; i < invalidItems.length; i++) {
+        const item = invalidItems[i];
+        setCleanupProgress(prev => ({ ...prev, current: i + 1 }));
+        if (item.id || item.nip) {
+          const ok = await syncTableRemote('PEGAWAI', 'DELETE', { id: item.id, nip: item.nip, nama: item.nama });
+          if (ok) { if(item.id) processedIds.add(item.id); removed++; }
+        }
+      }
+      for (let j = 0; j < duplicateNips.length; j++) {
+        const dNip = duplicateNips[j];
+        setCleanupProgress(prev => ({ ...prev, current: invalidItems.length + j + 1 }));
+        const matches = currentList.filter(p => p.cleanNip === dNip);
+        if (matches.length > 1) {
+          for (let i = 1; i < matches.length; i++) {
+            const m = matches[i];
+            if (!processedIds.has(m.id)) {
+              const ok = await syncTableRemote('PEGAWAI', 'DELETE', { id: m.id, nip: m.nip, nama: m.nama });
+              if (ok) { processedIds.add(m.id); removed++; }
+            }
+          }
+        }
+      }
+      if (removed > 0) {
+        setSuccessMsg(`Berhasil membersihkan ${removed} data bermasalah.`);
+        setShowSuccess(true);
+        loadSettingsData();
+      }
+    } catch (e) { console.error(e); }
+    finally { setSyncing(false); setCleanupProgress({ current: 0, total: 0, active: false }); }
+  };
+
+  const handleCleanupEmptyRows = async () => {
+    if (!confirm("Bersihkan baris kosong/stray yang tidak memiliki NIP, Nama, dan ID di Google Sheet?")) return;
+    setSyncing(true);
+    try {
+      const res = await cleanupEmptyRowsRemote('PEGAWAI');
+      if (res.success) {
+        setSuccessMsg(res.message || "Berhasil membersihkan baris kosong di database.");
+        setShowSuccess(true);
+        loadSettingsData();
+      } else {
+        alert(res.message || "Gagal membersihkan baris kosong.");
+      }
+    } catch (e: any) {
+      alert("Terjadi kesalahan: " + (e.message || String(e)));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const parseImportDate = (val: any): string => {
+    return parseDateToYYYYMMDD(val);
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        setSyncing(true);
+        setImportProgress({ current: 0, total: 0 });
+        const currentPegawai = await fetchPegawaiFromSheets();
+        const existingPegawaiMap = new Map<string, string>();
+        currentPegawai.forEach(p => {
+          const cleanNip = (p.nip || '').replace(/\D/g, '');
+          if (cleanNip) existingPegawaiMap.set(cleanNip, p.id);
+        });
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+        const validData = data.filter(row => {
+          const nipVal = row.NIP || row.nip || row['NIP Baru'] || row['NIP Baru (18 digit)'] || row['nipbaru'] || row['asnnip'] || row['nip_asn'] || row['asn_nip'];
+          return nipVal && String(nipVal).trim() !== '';
+        });
+        if (validData.length === 0) { alert("Tidak ditemukan data NIP valid."); setSyncing(false); return; }
+        setImportProgress({ current: 0, total: validData.length });
+        let successCount = 0;
+        for (let i = 0; i < validData.length; i++) {
+          const row = validData[i];
+          const payload: Partial<Pegawai> = {};
+          Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/[\s_.-]/g, '');
+            let val = row[key];
+            const parsedVal = (val instanceof Date) ? parseImportDate(val) : String(val !== undefined && val !== null ? val : '').trim();
+
+            if (normalizedKey === 'nip' || normalizedKey === 'nipbaru' || normalizedKey === 'asnnip' || normalizedKey === 'nipasn' || normalizedKey === 'nipbaru18digit') {
+              payload.nip = parsedVal.replace(/\D/g, '');
+            } else if (normalizedKey === 'nama' || normalizedKey === 'namapegawai' || normalizedKey === 'fullname') {
+              payload.nama = parsedVal;
+            } else if (normalizedKey === 'jabatan' || normalizedKey === 'namajabatan' || normalizedKey === 'jab' || normalizedKey === 'tmtjabatan') {
+              if (normalizedKey === 'tmtjabatan') payload.tmtJabatan = parseImportDate(val);
+              else payload.jabatan = parsedVal;
+            } else if (normalizedKey === 'unitkerja' || normalizedKey === 'unit_kerja') {
+              payload.unitKerja = parsedVal;
+            } else if (normalizedKey === 'golruang' || normalizedKey === 'golongan' || normalizedKey === 'pangkatgol') {
+              payload.golRuang = parsedVal;
+            } else if (normalizedKey === 'jenispegawai' || normalizedKey === 'kategoripeg' || normalizedKey === 'type') {
+              payload.jenisPegawai = parsedVal;
+            } else if (normalizedKey === 'status' || normalizedKey === 'statuspegawai') {
+              const lower = parsedVal.toLowerCase();
+              if (lower === 'aktif' || lower === 'active' || lower.startsWith('aktif')) payload.status = 'Aktif';
+              else if (lower === 'tidak aktif' || lower === 'non aktif' || lower === 'non-aktif' || lower === 'inactive' || lower.startsWith('tidak')) payload.status = 'Tidak Aktif';
+              else if (lower === 'pensiun' || lower === 'retired' || lower.startsWith('pensiun') || lower.startsWith('bup')) payload.status = 'Tidak Aktif';
+              else if (lower === 'tugas belajar' || lower === 'tubel' || lower.startsWith('tugas')) payload.status = 'Tugas Belajar';
+              else payload.status = parsedVal;
+            } else if (normalizedKey === 'gender' || normalizedKey === 'jeniskelamin' || normalizedKey === 'jk' || normalizedKey === 'lp' || normalizedKey === 'genderlp') {
+              const g = parsedVal.toUpperCase();
+              payload.gender = (g === 'P' || g.startsWith('PEREMPUAN') || g === 'WANITA' || g === 'W') ? 'P' : 'L';
+            } else if (normalizedKey === 'tempatlahir' || normalizedKey === 'tmplahir') {
+              payload.tempatLahir = parsedVal;
+            } else if (normalizedKey === 'tanggallahir' || normalizedKey === 'tgllahir') {
+              payload.tanggalLahir = parseImportDate(val);
+            } else if (normalizedKey === 'alamat') {
+              payload.alamat = parsedVal;
+            } else if (normalizedKey === 'eselon') {
+              payload.eselon = parsedVal;
+            } else if (normalizedKey === 'agama') {
+              payload.agama = parsedVal;
+            } else if (normalizedKey === 'nohp' || normalizedKey === 'telepon' || normalizedKey === 'wa') {
+              payload.noHp = parsedVal;
+            } else if (normalizedKey === 'email') {
+              payload.email = parsedVal;
+            } else if (normalizedKey === 'npwp') {
+              payload.npwp = parsedVal;
+            } else if (normalizedKey === 'nobpjs' || normalizedKey === 'bpjs') {
+              payload.noBpjs = parsedVal;
+            } else if (normalizedKey === 'nokariskarsu') {
+              payload.noKarisKarsu = parsedVal;
+            } else if (normalizedKey === 'notapera') {
+              payload.noTAPERA = parsedVal;
+            } else if (normalizedKey === 'nokarpeg') {
+              payload.noKarpeg = parsedVal;
+            } else if (normalizedKey === 'norekeninggaji' || normalizedKey === 'nomorrekeninggaji') {
+              payload.noRekeningGaji = parsedVal;
+            } else if (normalizedKey === 'namabank' || normalizedKey === 'bank') {
+              payload.namaBank = parsedVal;
+            } else if (normalizedKey === 'pendidikan' || normalizedKey === 'pend') {
+              payload.pendidikan = parsedVal;
+            } else if (normalizedKey === 'jurusan') {
+              payload.jurusan = parsedVal;
+            } else if (normalizedKey === 'tmtpangkat' || normalizedKey === 'tmt_pangkat') {
+              payload.tmtPangkat = parseImportDate(val);
+            } else if (normalizedKey === 'subbagian' || normalizedKey === 'sub_bagian') {
+              payload.subBagian = parsedVal;
+            } else if (normalizedKey === 'bagian') {
+              payload.bagian = parsedVal;
+            } else if (normalizedKey === 'masakerja') {
+              payload.masaKerja = parsedVal;
+            } else if (normalizedKey === 'statusperkawinan' || normalizedKey === 'statuskawin' || normalizedKey === 'maritalstatus') {
+              payload.statusPerkawinan = parsedVal;
+            } else if (normalizedKey === 'pangkat') {
+              payload.pangkat = parsedVal;
+            } else if (normalizedKey === 'tmtcpns') {
+              payload.tmtCpns = parseImportDate(val);
+            } else if (normalizedKey === 'nik') {
+              payload.nik = parsedVal.replace(/\D/g, '');
+            } else if (normalizedKey === 'bup') {
+              payload.bup = parsedVal;
+            }
+          });
+
+          if (!payload.jenisPegawai) {
+            payload.jenisPegawai = 'PNS';
+          }
+          if (!payload.status) {
+            payload.status = 'Aktif';
+          }
+          if (!payload.unitKerja) {
+            payload.unitKerja = payload.subBagian || 'DJKI';
+          }
+
+          if (payload.nip) {
+            const cleanNip = payload.nip.replace(/\D/g, '');
+            const existingId = existingPegawaiMap.get(cleanNip);
+            payload.id = existingId || `PEG-${cleanNip}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            const ok = await syncTableRemote('PEGAWAI', 'SAVE', payload);
+            if (ok) successCount++;
+          }
+          setImportProgress(prev => ({ ...prev, current: i + 1 }));
+        }
+        setSuccessMsg(`Berhasil memproses ${validData.length} baris. ${successCount} data disimpan.`);
+        setShowSuccess(true);
+        loadSettingsData();
+      } catch (err) { alert("Gagal membaca Excel."); }
+      finally { setSyncing(false); setImportProgress({ current: 0, total: 0 }); if (importExcelInputRef.current) importExcelInputRef.current.value = ''; }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleBulkPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    setBulkPhotoProgress({ current: 0, total: fileList.length, active: true });
+    setSyncing(true);
+    let successCount = 0;
+    for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setBulkPhotoProgress(prev => ({ ...prev, current: i + 1 }));
+        const nipFromFileName = file.name.split('.')[0].replace(/\D/g, '');
+        if (nipFromFileName.length < 8) continue;
+        try {
+            const pList = await fetchPegawaiFromSheets();
+            const pegawai = pList.find(p => (p.nip || '').replace(/\D/g, '') === nipFromFileName);
+            if (!pegawai) continue;
+            const base64 = await new Promise<string>(r => { 
+                const rd = new FileReader(); 
+                rd.onloadend = () => r(rd.result as string); 
+                rd.readAsDataURL(file); 
+            });
+            const res = await uploadFileToDrive(`FOTO_BULK_${nipFromFileName}`, file.type, base64);
+            if (res.success && res.fileUrl) {
+                const ok = await syncTableRemote('PEGAWAI', 'SAVE', { ...pegawai, foto: res.fileUrl });
+                if (ok) successCount++;
+            }
+        } catch (err) {}
+    }
+    setSyncing(false);
+    setBulkPhotoProgress({ current: 0, total: 0, active: false });
+    setSuccessMsg(`Bulk Upload Selesai: ${successCount} Foto Berhasil Diunggah.`);
+    setShowSuccess(true);
+    loadSettingsData();
+    if (bulkPhotoInputRef.current) bulkPhotoInputRef.current.value = '';
+  };
+
+  const handleResetAllData = async () => {
+    if (!confirm("HAPUS SELURUH DATA PEGAWAI?")) return;
+    if (!confirm("KONFIRMASI TERAKHIR: Hapus permanen?")) return;
+    setSyncing(true);
+    try {
+      const freshList = await fetchPegawaiFromSheets(true);
+      setCleanupProgress({ current: 0, total: freshList.length, active: true });
+      let successCount = 0;
+      for (let i = 0; i < freshList.length; i++) {
+        setCleanupProgress(prev => ({ ...prev, current: i + 1 }));
+        const ok = await syncTableRemote('PEGAWAI', 'DELETE', { id: freshList[i].id, nip: freshList[i].nip, nama: freshList[i].nama });
+        if (ok) successCount++;
+      }
+      alert(`Berhasil menghapus ${successCount} data.`);
+      logActivity('DELETE', 'Database', 'Reset total data pegawai');
+      loadSettingsData();
+    } catch (e) { alert("Gagal reset."); }
+    finally { setSyncing(false); setCleanupProgress({ current: 0, total: 0, active: false }); }
+  };
+
+  const handleUserAction = async (action: 'SAVE' | 'DELETE', userData?: AdminUser) => {
+    setLoading(true);
+    const targetUser = { ...(userData || (userFormData as AdminUser)) };
+    if (action === 'SAVE') {
+      if (!targetUser.id) targetUser.id = `USR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const normalizedRoles = normalizeRolesList(targetUser.roles, targetUser.role);
+      targetUser.roles = normalizedRoles;
+      if (!targetUser.role || !normalizedRoles.includes(targetUser.role as any)) {
+        targetUser.role = normalizedRoles[0] || 'Viewer';
+      }
+      targetUser.status = targetUser.status || 'Aktif';
+    }
+    const payload = action === 'DELETE' 
+      ? { ...targetUser, nama: targetUser.name } 
+      : {
+          ...targetUser,
+          roles: targetUser.roles
+        };
+    const success = await syncTableRemote('USERS', action === 'SAVE' ? 'SAVE' : 'DELETE', payload);
+    if (success) {
+      if (action === 'SAVE' && currentUser && (targetUser.nip === currentUser.nip || targetUser.id === currentUser.id)) {
+        updateUser(targetUser);
+      }
+      setTimeout(async () => {
+        const u = await fetchUsersFromSheets(true);
+        setUsers(u);
+        setIsUserModalOpen(false);
+        setSuccessMsg(`Data User ${targetUser.name} berhasil diproses.`);
+        setShowSuccess(true);
+        setLoading(false);
+      }, 800);
+    } else { 
+        alert("Gagal sinkronisasi ke cloud."); 
+        setLoading(false); 
+    }
+  };
+
+  const saveAbsensiSettings = async () => {
+    setLoading(true);
+    const ok = await saveAbsensiConfig(absensiConfig);
+    if (ok) {
+        setSuccessMsg("Pengaturan Absensi Berhasil Disimpan.");
+        setShowSuccess(true);
+        logActivity('UPDATE', 'Settings', 'Update Pengaturan Absensi (Reguler/WFA)');
+    } else {
+        alert("Gagal menyimpan pengaturan absensi.");
+    }
+    setLoading(false);
+  };
+
+  const toggleWfaUser = (nip: string) => {
+    setAbsensiConfig(prev => {
+        const exists = prev.wfaNips.includes(nip);
+        if (exists) return { ...prev, wfaNips: prev.wfaNips.filter(n => n !== nip) };
+        return { ...prev, wfaNips: [...prev.wfaNips, nip] };
+    });
+  };
+
+  const inputClass = "w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-blue-600 focus:bg-white transition-all text-gray-950 shadow-sm";
+  const labelClass = "text-[9px] font-black text-gray-400 uppercase ml-3 tracking-widest block mb-2";
+
+  return (
+    <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-sm border border-gray-100 overflow-hidden animate-fadeIn pb-24 lg:pb-10">
+      <SuccessModal isOpen={showSuccess} onClose={() => setShowSuccess(false)} title="Konfigurasi Berhasil" message={successMsg} />
+      
+      <div className="flex flex-col lg:flex-row min-h-[800px]">
+        {/* TAB NAVIGATION */}
+        <div className="w-full lg:w-80 bg-gray-50/50 border-r border-gray-100 p-8 flex flex-row lg:flex-col overflow-x-auto shrink-0 gap-2">
+          {[
+            { id: 'general', label: 'Branding & Teks', icon: 'bi-palette2' }, 
+            { id: 'database', label: 'Integrasi Cloud', icon: 'bi-database-fill-gear' }, 
+            { id: 'absensi', label: 'Pengaturan Absensi', icon: 'bi-clock-history' },
+            { id: 'access', label: 'Manajemen Akses', icon: 'bi-shield-lock-fill' },
+            { id: 'users', label: 'Manajemen User', icon: 'bi-people-fill' },
+            { id: 'management', label: 'Pengelolaan Data', icon: 'bi-database-fill-exclamation' }
+          ].filter(tab => isSuperadmin || tab.id === 'general').map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 lg:flex-none flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-[#111827] text-white shadow-xl' : 'text-gray-400 hover:text-gray-900 hover:bg-white'}`}>
+              <i className={`bi ${tab.icon} text-lg`}></i>
+              <span className="hidden md:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 p-8 md:p-16 overflow-y-auto custom-scrollbar">
+          
+          {/* TAB GENERAL: BRANDING & TEKS */}
+          {activeTab === 'general' && (
+            <div className="space-y-12 animate-fadeIn max-w-4xl">
+              <div>
+                <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Identitas & Branding</h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Kustomisasi antarmuka dan pesan sistem</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="space-y-6">
+                    <div>
+                        <label className={labelClass}>Nama Sistem / Portal</label>
+                        <input type="text" className={inputClass} value={systemName} onChange={e => setSystemName(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Teks Berjalan (Ticker)</label>
+                        <textarea rows={3} className={`${inputClass} normal-case h-24 resize-none`} value={runningTextValue} onChange={e => setRunningTextValue(e.target.value)} />
+                    </div>
+                 </div>
+
+                 <div className="space-y-8">
+                    <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-[2.5rem] border border-gray-100">
+                       <div className="h-20 w-20 bg-white rounded-2xl p-2 border-2 border-white shadow-xl overflow-hidden shrink-0 flex items-center justify-center">
+                          <img src={appLogo} className="h-full w-full object-contain" />
+                       </div>
+                       <div className="flex-1">
+                          <p className={labelClass}>Logo Aplikasi</p>
+                          <button onClick={() => appLogoInputRef.current?.click()} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg active:scale-95">Ganti Logo</button>
+                          <input type="file" ref={appLogoInputRef} className="hidden" accept="image/*" onChange={e => handleUploadLogo('APP', e)} />
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-[2.5rem] border border-gray-100">
+                       <div className="h-20 w-20 bg-white rounded-2xl p-2 border-2 border-white shadow-xl overflow-hidden shrink-0 flex items-center justify-center">
+                          <img src={templateLogo} className="h-full w-full object-contain" />
+                       </div>
+                       <div className="flex-1">
+                          <p className={labelClass}>Logo Kop Surat (TND)</p>
+                          <button onClick={() => templateLogoInputRef.current?.click()} className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg active:scale-95">Ganti Logo Kop</button>
+                          <input type="file" ref={templateLogoInputRef} className="hidden" accept="image/*" onChange={e => handleUploadLogo('TEMPLATE', e)} />
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="pt-8 border-t">
+                 <button onClick={saveGeneralSettings} disabled={uploading} className="px-16 py-4 bg-[#111827] text-white rounded-2xl font-black text-[10px] uppercase shadow-2xl active:scale-95 transition-all flex items-center gap-3">
+                    {uploading ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <i className="bi bi-check-circle-fill"></i>}
+                    Simpan Perubahan Branding
+                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB DATABASE: INTEGRASI CLOUD */}
+          {activeTab === 'database' && (
+            <div className="space-y-12 animate-fadeIn max-w-4xl">
+              <div>
+                <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Arsitektur Cloud</h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Sinkronisasi Google Spreadsheet & Drive API</p>
+              </div>
+
+              <div className="space-y-8 bg-blue-50/50 p-10 rounded-[3rem] border border-blue-100">
+                 <div className="space-y-6">
+                    <div>
+                        <label className={labelClass}>Spreadsheet Database ID</label>
+                        <input type="text" className={`${inputClass} font-mono normal-case`} value={dbConfig.spreadsheetId} onChange={e => setDbConfig({...dbConfig, spreadsheetId: e.target.value})} placeholder="Paste ID Spreadsheet di sini..." />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Google Apps Script Web App URL</label>
+                        <input type="text" className={`${inputClass} font-mono normal-case`} value={dbConfig.appsScriptUrl} onChange={e => setDbConfig({...dbConfig, appsScriptUrl: e.target.value})} placeholder="https://script.google.com/macros/s/.../exec" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Drive Folder ID (Uploads)</label>
+                        <input type="text" className={`${inputClass} font-mono normal-case`} value={dbConfig.driveFolderId} onChange={e => setDbConfig({...dbConfig, driveFolderId: e.target.value})} placeholder="ID Folder Drive untuk arsip digital..." />
+                    </div>
+                 </div>
+
+                 <div className="flex flex-wrap gap-4">
+                    <button onClick={saveCloudConfig} className="px-12 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">Simpan Konfigurasi</button>
+                    <button onClick={handleSyncGid} disabled={syncingGid} className="px-12 py-4 bg-white border-2 border-blue-600 text-blue-600 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95 flex items-center gap-3">
+                       {syncingGid ? <div className="h-4 w-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div> : <i className="bi bi-arrow-repeat text-lg"></i>}
+                       Sinkronkan Peta GID
+                    </button>
+                    <button onClick={handleAudit} disabled={auditing} className="px-12 py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95 flex items-center gap-3">
+                       {auditing ? <div className="h-4 w-4 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin"></div> : <i className="bi bi-search text-lg"></i>}
+                       Audit & Perbaikan Sheet
+                    </button>
+                    <button onClick={openScriptGuide} className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase transition-all active:scale-95 flex items-center gap-2.5 shadow-lg shadow-emerald-600/20">
+                       <i className="bi bi-file-earmark-code-fill text-base"></i>
+                       Panduan Deploy & Kode Apps Script
+                    </button>
+                 </div>
+              </div>
+
+              <div className="p-8 bg-amber-50 rounded-[2.5rem] border border-amber-100 flex gap-6">
+                 <div className="h-12 w-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg"><i className="bi bi-exclamation-triangle-fill text-2xl"></i></div>
+                 <div>
+                    <h5 className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Peringatan Keamanan</h5>
+                    <p className="text-[10px] text-amber-700 font-medium mt-2 leading-relaxed uppercase">Perubahan ID database dapat menyebabkan sistem tidak dapat memuat data jika ID tersebut tidak valid atau tidak memiliki izin akses yang tepat.</p>
+                 </div>
+              </div>
+
+              {auditResults.length > 0 && (
+                <div className="space-y-8 animate-fadeIn max-w-5xl">
+                   <div className="flex items-center justify-between">
+                      <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Hasil Audit Spreadsheet</h5>
+                      <button onClick={() => setAuditResults([])} className="text-[10px] font-bold text-gray-400 uppercase hover:text-red-500">Tutup Hasil Audit</button>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {auditResults.map((sheet: any) => (
+                        <div key={sheet.id} className={`p-6 rounded-[2.5rem] border-2 transition-all ${sheet.isSystemSheet ? 'bg-white border-gray-100' : 'bg-red-50 border-red-200'}`}>
+                           <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg ${sheet.isSystemSheet ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+                                    <i className={`bi ${sheet.isSystemSheet ? 'bi-file-earmark-spreadsheet' : 'bi-trash3-fill'}`}></i>
+                                 </div>
+                                 <div className="overflow-hidden">
+                                    <p className="text-[11px] font-black uppercase leading-tight truncate">{sheet.name}</p>
+                                    <p className="text-[9px] font-bold text-gray-400">ID: {sheet.id}</p>
+                                 </div>
+                              </div>
+                              {!sheet.isSystemSheet && (
+                                <button onClick={() => handleDeleteSheet(sheet.id, sheet.name)} className="px-4 py-1.5 bg-red-600 text-white rounded-xl text-[8px] font-black uppercase shadow-lg active:scale-95">Hapus</button>
+                              )}
+                           </div>
+
+                           <div className="grid grid-cols-2 gap-2 mb-4">
+                              <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                                 <p className="text-[8px] font-black text-gray-400 uppercase">Baris</p>
+                                 <p className="text-[14px] font-black text-gray-900">{sheet.rowCount}</p>
+                              </div>
+                              <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                                 <p className="text-[8px] font-black text-gray-400 uppercase">Kolom</p>
+                                 <p className="text-[14px] font-black text-gray-900">{sheet.columnCount}</p>
+                              </div>
+                           </div>
+
+                           {sheet.missingColumns.length > 0 && (
+                             <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                <p className="text-[9px] font-black text-amber-800 uppercase mb-2">Kolom Kurang ({sheet.missingColumns.length}):</p>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                   {sheet.missingColumns.map((col: string) => (
+                                     <span key={col} className="px-2 py-1 bg-amber-200 text-amber-900 rounded-lg text-[8px] font-black">{col}</span>
+                                   ))}
+                                </div>
+                                <button onClick={() => handleFixSheet(sheet.name)} className="w-full py-2 bg-amber-600 text-white rounded-xl text-[8px] font-black uppercase shadow-md active:scale-95">Perbaiki Kolom</button>
+                             </div>
+                           )}
+
+                           {sheet.isPlaceholder && (
+                             <div className="mt-4 p-4 bg-red-100 rounded-2xl border border-red-200">
+                                <p className="text-[9px] font-black text-red-800 uppercase">GID Placeholder</p>
+                                <p className="text-[8px] text-red-700 font-bold mt-1 tracking-tight leading-relaxed uppercase">Gunakan "Sinkronkan Peta GID" untuk memperbarui ID sheet ini.</p>
+                             </div>
+                           )}
+
+                           {sheet.isSystemSheet && sheet.missingColumns.length === 0 && !sheet.isPlaceholder && (
+                             <div className="mt-2 flex items-center gap-2 text-emerald-600">
+                               <i className="bi bi-check-circle-fill"></i>
+                               <span className="text-[9px] font-black uppercase">Konfigurasi Valid</span>
+                             </div>
+                           )}
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB ABSENSI: PENGATURAN ABSENSI */}
+          {activeTab === 'absensi' && (
+            <div className="space-y-12 animate-fadeIn max-w-5xl">
+              <div>
+                <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Konfigurasi Absensi</h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Atur batasan jaringan kantor dan hak akses WFA</p>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                {/* OFFICE NETWORK SETTINGS */}
+                <div className="space-y-8 bg-gray-50 p-10 rounded-[3rem] border border-gray-100">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="h-12 w-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-wifi"></i></div>
+                    <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Jaringan Kantor (Reguler)</h5>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className={labelClass}>Nama Wi-Fi Kantor (SSID)</label>
+                      <input type="text" className={inputClass} value={absensiConfig.officeWifiSsid} onChange={e => setAbsensiConfig({...absensiConfig, officeWifiSsid: e.target.value})} placeholder="Contoh: @DJKI_FREE_WIFI" />
+                      <p className="text-[8px] text-gray-400 font-bold uppercase mt-2 ml-3">* Pegawai reguler wajib terhubung ke Wi-Fi ini</p>
+                    </div>
+                    <div>
+                      <label className={labelClass}>IP Address Kantor (Public IP / Ranges)</label>
+                      <input type="text" className={`${inputClass} font-mono`} value={absensiConfig.officeIpAddresses} onChange={e => setAbsensiConfig({...absensiConfig, officeIpAddresses: e.target.value})} placeholder="Contoh: 103.12.34.56, 103.12.34.0/24" />
+                      <p className="text-[8px] text-gray-400 font-bold uppercase mt-2 ml-3">* Pisahkan dengan koma untuk banyak IP atau gunakan format CIDR (1.2.3.0/24)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* WFA WHITELIST */}
+                <div className="space-y-6 bg-emerald-50/50 p-10 rounded-[3rem] border border-emerald-100 flex flex-col h-[600px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-house-heart"></i></div>
+                      <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Akses WFA (Work From Anywhere)</h5>
+                    </div>
+                    <span className="px-4 py-1 bg-emerald-600 text-white rounded-full text-[10px] font-black">{absensiConfig.wfaNips.length} Pegawai</span>
+                  </div>
+                  
+                  <div className="relative">
+                    <i className="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-emerald-600"></i>
+                    <input 
+                        type="text" 
+                        className="w-full pl-12 pr-5 py-4 bg-white border-2 border-emerald-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-emerald-600 transition-all" 
+                        placeholder="Cari Nama / NIP Pegawai..." 
+                        value={wfaSearch}
+                        onChange={e => setWfaSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                    {pegawaiList
+                      .filter(p => p.nama.toLowerCase().includes(wfaSearch.toLowerCase()) || p.nip.includes(wfaSearch))
+                      .map((p, i) => {
+                        const isWfa = absensiConfig.wfaNips.includes(p.nip);
+                        return (
+                          <div 
+                            key={`${p.nip}-${i}`} 
+                            onClick={() => toggleWfaUser(p.nip)}
+                            className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${isWfa ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg' : 'bg-white border-gray-100 text-gray-900 hover:border-emerald-200'}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs ${isWfa ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
+                                {p.nama.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase leading-tight">{p.nama}</p>
+                                <p className={`text-[8px] font-bold ${isWfa ? 'text-white/70' : 'text-gray-400'}`}>NIP. {p.nip}</p>
+                              </div>
+                            </div>
+                            {isWfa && <i className="bi bi-check-circle-fill text-lg"></i>}
+                          </div>
+                        );
+                      })
+                    }
+                  </div>
+                </div>
+
+                {/* SIMPEG INTEGRATION SETTINGS */}
+                {isSuperadmin && (
+                  <div className="space-y-8 bg-blue-50/50 p-10 rounded-[3rem] border border-blue-100 xl:col-span-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 bg-blue-700 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-gear-wide-connected"></i></div>
+                      <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Integrasi SIMPEG Kemenkumham</h5>
+                    </div>
+                    <button 
+                      onClick={() => setAbsensiConfig({...absensiConfig, simpegEnabled: !absensiConfig.simpegEnabled})}
+                      className={`h-8 w-14 rounded-full p-1 transition-all ${absensiConfig.simpegEnabled ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-gray-300'}`}
+                    >
+                       <div className={`h-6 w-6 bg-white rounded-full transition-transform ${absensiConfig.simpegEnabled ? 'translate-x-6' : 'translate-x-0'} shadow-sm`}></div>
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className={labelClass}>SIMPEG API Endpoint URL</label>
+                      <div className="relative">
+                        <i className="bi bi-link-45deg absolute left-5 top-1/2 -translate-y-1/2 text-blue-600 text-xl"></i>
+                        <input 
+                          type="text" 
+                          className={`${inputClass} pl-14 font-mono normal-case`}
+                          placeholder="https://api.simpeg.kemenkumham.go.id/v1/..."
+                          value={absensiConfig.simpegApiUrl || ''}
+                          onChange={e => setAbsensiConfig({...absensiConfig, simpegApiUrl: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className={labelClass}>Bearer / API Token (X-API-KEY)</label>
+                      <div className="relative">
+                        <i className="bi bi-key-fill absolute left-5 top-1/2 -translate-y-1/2 text-amber-600 text-xl"></i>
+                        <input 
+                          type="password" 
+                          className={`${inputClass} pl-14`}
+                          placeholder="••••••••••••••••"
+                          value={absensiConfig.simpegApiKey || ''}
+                          onChange={e => setAbsensiConfig({...absensiConfig, simpegApiKey: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-blue-100/50 rounded-2xl flex gap-4 items-start border border-blue-200/50">
+                    <i className="bi bi-info-circle-fill text-blue-600 text-lg mt-0.5"></i>
+                    <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed">Aktifkan integrasi untuk mengirim data presensi secara real-time ke sistem SIMPEG Pusat Kemenkumham berdasarkan NIP Pegawai.</p>
+                  </div>
+                </div>
+                )}
+              </div>
+
+              <div className="pt-8 border-t flex items-center justify-between">
+                 <div className="flex items-center gap-4 text-amber-600 bg-amber-50 px-6 py-3 rounded-2xl border border-amber-100">
+                    <i className="bi bi-info-circle-fill text-xl"></i>
+                    <p className="text-[9px] font-black uppercase leading-relaxed">Pegawai yang tidak ada di daftar WFA <br/>hanya bisa absen jika terhubung Wi-Fi Kantor.</p>
+                 </div>
+                 <button onClick={saveAbsensiSettings} disabled={loading} className="px-16 py-5 bg-[#111827] text-white rounded-[2rem] font-black text-[11px] uppercase shadow-2xl active:scale-95 transition-all flex items-center gap-3">
+                    {loading ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <i className="bi bi-cloud-upload-fill text-lg"></i>}
+                    Simpan Konfigurasi Absensi
+                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB ACCESS: MANAJEMEN AKSES & PEMELIHARAAN */}
+          {activeTab === 'access' && (
+            <div className="space-y-12 animate-fadeIn max-w-6xl">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Akses & Pemeliharaan</h4>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Kontrol akses halaman dan status pengembangan</p>
+                </div>
+                <button onClick={saveSystemSettings} disabled={loading} className="px-10 py-4 bg-[#111827] text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 flex items-center gap-3">
+                  {loading ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <i className="bi bi-cloud-upload-fill"></i>}
+                  Simpan Semua Perubahan
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* MAINTENANCE MODE */}
+                <div className="lg:col-span-1 space-y-6">
+                  <div className="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-100">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="h-12 w-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-tools"></i></div>
+                      <h5 className="text-[12px] font-black text-amber-900 uppercase tracking-widest">Mode Pemeliharaan</h5>
+                    </div>
+                    <div className="space-y-6">
+                      <div className="flex flex-col gap-4">
+                        <button 
+                          onClick={() => {
+                            setSystemConfig({...systemConfig, maintenance: {...systemConfig.maintenance, all: true}});
+                            // Triggr auto-save if helpful, or just let user click save
+                          }}
+                          className={`flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black uppercase text-[11px] ${systemConfig.maintenance.all ? 'bg-amber-100 border-amber-500 text-amber-700 shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-amber-200'}`}
+                        >
+                          <i className="bi bi-lock-fill text-lg"></i>
+                          Tutup Aplikasi (Maintenance)
+                        </button>
+                        
+                        <button 
+                          onClick={() => {
+                            setSystemConfig({...systemConfig, maintenance: {...systemConfig.maintenance, all: false}});
+                          }}
+                          className={`flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black uppercase text-[11px] ${!systemConfig.maintenance.all ? 'bg-emerald-100 border-emerald-500 text-emerald-700 shadow-inner' : 'bg-white border-gray-100 text-gray-400 hover:border-emerald-200'}`}
+                        >
+                          <i className="bi bi-unlock-fill text-lg"></i>
+                          Buka Aplikasi (Aktif)
+                        </button>
+                      </div>
+                      <p className="text-[8px] text-amber-600 font-bold uppercase ml-2 leading-relaxed">
+                        * MENUTUP APLIKASI AKAN MENAMPILKAN PESAN PEMELIHARAAN BAGI SELURUH USER <br/>
+                        KECUALI SUPERADMIN YANG MASIH TETAP DAPAT MENGAKSES SISTEM.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col h-[500px]">
+                    <h5 className="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-4">Halaman Dalam Pengembangan</h5>
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                      {APP_ROUTES.map(route => (
+                        <div 
+                          key={route.path}
+                          onClick={() => toggleMaintenancePage(route.path)}
+                          className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${(systemConfig.maintenance?.pages || []).includes(route.path) ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-gray-50 text-gray-900 hover:border-amber-200'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <i className={`bi ${route.icon} text-lg`}></i>
+                            <span className="text-[10px] font-black uppercase">{route.label}</span>
+                          </div>
+                          {(systemConfig.maintenance?.pages || []).includes(route.path) && <i className="bi bi-cone-striped"></i>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* PAGE ACCESS CONTROL */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-sm flex flex-col h-[700px]">
+                    <div className="p-8 bg-gray-50 border-b flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Kontrol Akses Halaman</h5>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase">Superadmin memiliki akses penuh ke semua halaman</span>
+                      </div>
+                      <div className="relative w-full md:w-64">
+                        <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input 
+                          type="text" 
+                          className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-blue-600 transition-all"
+                          placeholder="Cari Halaman..."
+                          value={accessSearch}
+                          onChange={e => setAccessSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                      {APP_ROUTES.filter(r => r.label.toLowerCase().includes(accessSearch.toLowerCase()) || r.path.toLowerCase().includes(accessSearch.toLowerCase())).map(route => {
+                        const access = (systemConfig.pageAccess || []).find(a => a.route === route.path);
+                        return (
+                          <div key={route.path} className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm text-blue-600"><i className={`bi ${route.icon}`}></i></div>
+                                <div>
+                                  <h6 className="text-[11px] font-black text-gray-900 uppercase">{route.label}</h6>
+                                  <p className="text-[9px] font-mono text-gray-400">{route.path}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => bulkRoleAccess(route.path, 'all')} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[8px] font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">All</button>
+                                <button onClick={() => bulkRoleAccess(route.path, 'none')} className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[8px] font-black uppercase border border-gray-200 hover:bg-gray-200 hover:text-gray-600 transition-all">None</button>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div>
+                                <label className={labelClass}>Role yang Diizinkan</label>
+                                <div className="flex flex-wrap gap-2.5 mt-2">
+                                  {ALL_SYSTEM_ROLES.map(r => {
+                                    const role = r.id;
+                                    const isChecked = (access?.roles || []).includes(role);
+                                    return (
+                                      <label key={role} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border-2 cursor-pointer transition-all ${isChecked ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'}`}>
+                                        <input 
+                                          type="checkbox" 
+                                          className="hidden"
+                                          checked={isChecked}
+                                          onChange={() => toggleRoleAccess(route.path, role)}
+                                        />
+                                        <i className={`bi ${isChecked ? 'bi-check-square-fill' : 'bi-square'} text-xs`}></i>
+                                        <span className="text-[9px] font-black uppercase tracking-wider">{role}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                <p className="text-[8px] text-gray-400 font-bold uppercase mt-3 ml-2">* Superadmin disarankan tetap dicentang</p>
+                              </div>
+                              <div>
+                                <label className={labelClass}>NIP Khusus (Whitelist)</label>
+                                <input 
+                                  type="text" 
+                                  className={`${inputClass} font-mono`}
+                                  placeholder="Contoh: 19800101..., 19900202..."
+                                  value={access?.nips?.join(', ') || ''}
+                                  onChange={e => updatePageAccess(route.path, 'nips', e.target.value)}
+                                />
+                                <p className="text-[8px] text-gray-400 font-bold uppercase mt-2 ml-2">* Pisahkan dengan koma</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB USERS CONTENT */}
+          {activeTab === 'users' && (
+            <div className="space-y-8 animate-fadeIn">
+              <div className="flex flex-col md:flex-row justify-between items-end border-b pb-6 gap-4">
+                <div>
+                  <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Manajemen User Cloud</h4>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Kelola otorisasi dan multi-role administrator sistem</p>
+                </div>
+                <button 
+                  onClick={() => { 
+                    setUserFormData({ role: 'Viewer', roles: ['Viewer'], status: 'Aktif' }); 
+                    setShowPassword(false); 
+                    setIsUserModalOpen(true); 
+                  }} 
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg tracking-widest hover:bg-blue-500 transition-all"
+                >
+                  + Admin Baru
+                </button>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-[2.5rem] overflow-x-auto custom-scrollbar shadow-sm">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-50 text-[8px] font-black uppercase text-gray-400 border-b tracking-[0.2em]">
+                    <tr><th className="px-8 py-5">Identitas & NIP</th><th className="px-4 py-5 text-center">Role / Otorisasi</th><th className="px-4 py-5 text-center">Status</th><th className="px-8 py-5 text-right">Opsi</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {users.map((u, i) => {
+                      const userRolesList = normalizeRolesList(u.roles, u.role);
+
+                      return (
+                        <tr key={`${u.id}-${u.nip}-${i}`} className="group hover:bg-blue-50/10 transition-colors">
+                          <td className="px-8 py-5">
+                            <p className="text-[11px] font-black text-gray-950 uppercase">{u.name}</p>
+                            <p className="text-[9px] font-mono text-gray-400">NIP. {u.nip}</p>
+                          </td>
+                          <td className="px-4 py-5 text-center">
+                            <div className="flex flex-wrap gap-1.5 justify-center max-w-sm mx-auto">
+                              {userRolesList.map((r, ri) => (
+                                <span key={ri} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[8px] font-black uppercase border border-blue-100 whitespace-nowrap shadow-2xs">
+                                  {r}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-5 text-center">
+                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase border ${
+                              u.status === 'Nonaktif' 
+                              ? 'bg-rose-50 text-rose-600 border-rose-100' 
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                            }`}>
+                              {u.status || 'Aktif'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                              <button 
+                                onClick={() => { 
+                                  const rolesArr = normalizeRolesList(u.roles, u.role);
+                                  setUserFormData({ ...u, roles: rolesArr, role: u.role || rolesArr[0] || 'Viewer' }); 
+                                  setShowPassword(false); 
+                                  setIsUserModalOpen(true); 
+                                }} 
+                                className="h-9 w-9 bg-white border border-gray-100 rounded-xl text-amber-500 hover:bg-amber-500 hover:text-white shadow-sm flex items-center justify-center transition-all"
+                                title="Edit User"
+                              >
+                                <i className="bi bi-pencil-square"></i>
+                              </button>
+                              {isSuperadmin && u.nip !== currentUser?.nip && (
+                                <button 
+                                  onClick={() => { if(window.confirm('Hapus user ini?')) handleUserAction('DELETE', u) }} 
+                                  className="h-9 w-9 bg-white border border-gray-100 text-rose-500 hover:bg-rose-500 hover:text-white shadow-sm flex items-center justify-center transition-all"
+                                  title="Hapus User"
+                                >
+                                  <i className="bi bi-trash-fill"></i>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB MANAGEMENT: IMPORT & DATA CLEANUP */}
+          {activeTab === 'management' && isSuperadmin && (
+            <div className="space-y-12 animate-fadeIn max-w-5xl">
+               <div>
+                  <h4 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Pengelolaan Data Master</h4>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Import masal, Pembersihan Duplikat, dan Reset Database</p>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* IMPORT EXCEL */}
+                  <div className="p-8 bg-blue-50 border border-blue-100 rounded-[2.5rem] space-y-6">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-file-earmark-spreadsheet-fill"></i></div>
+                        <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Import Data Excel</h5>
+                     </div>
+                     <p className="text-[10px] text-gray-500 font-bold leading-relaxed uppercase">Unggah file Excel (.xlsx) dengan kolom NIP, NAMA, JABATAN, dsb. Data akan disinkronkan langsung ke cloud.</p>
+                     <div className="flex flex-col gap-2">
+                        <button onClick={downloadExcelTemplate} className="w-full py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-2xl font-black text-[10px] uppercase shadow-sm active:scale-95 transition-all flex items-center justify-center gap-3">
+                           <i className="bi bi-file-earmark-arrow-down-fill text-lg"></i> Download Contoh Excel
+                        </button>
+                        <input type="file" ref={importExcelInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleImportExcel} />
+                        <button onClick={() => importExcelInputRef.current?.click()} disabled={syncing} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                           {importProgress.total > 0 ? (
+                              <><div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> {importProgress.current} / {importProgress.total}</>
+                           ) : <><i className="bi bi-cloud-arrow-up-fill"></i> Pilih & Import Excel</>}
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* BULK PHOTO */}
+                  <div className="p-8 bg-rose-50 border border-rose-100 rounded-[2.5rem] space-y-6">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-rose-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-images"></i></div>
+                        <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Bulk Foto Profil</h5>
+                     </div>
+                     <p className="text-[10px] text-gray-500 font-bold leading-relaxed uppercase">Unggah banyak foto sekaligus. Nama file harus match dengan NIP Pegawai (Contoh: 19800101....jpg).</p>
+                     <input type="file" ref={bulkPhotoInputRef} className="hidden" accept="image/*" multiple onChange={handleBulkPhotoUpload} />
+                     <button onClick={() => bulkPhotoInputRef.current?.click()} disabled={syncing} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                        {bulkPhotoProgress.active ? (
+                            <><div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> {bulkPhotoProgress.current} / {bulkPhotoProgress.total}</>
+                        ) : <><i className="bi bi-camera-fill"></i> Upload Foto Masal</>}
+                     </button>
+                  </div>
+
+                  {/* CLEANUP DATA */}
+                  <div className="p-8 bg-amber-50 border border-amber-100 rounded-[2.5rem] space-y-4">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-magic"></i></div>
+                        <div>
+                           <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Pembersihan Data</h5>
+                           <div className="flex gap-2 mt-1">
+                              <span className="text-[8px] font-black text-rose-600 uppercase tracking-tighter bg-rose-100 px-2 py-0.5 rounded-full">{duplicateNips.length} Duplikat</span>
+                              <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter bg-amber-100 px-2 py-0.5 rounded-full">{invalidItems.length} Corrupted</span>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="flex flex-col gap-2">
+                        <button onClick={handleCleanupData} disabled={syncing || (duplicateNips.length === 0 && invalidItems.length === 0)} className="w-full py-4 bg-white border-2 border-amber-500 text-amber-600 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all flex items-center justify-center gap-3">
+                           {cleanupProgress.active ? (
+                              <><div className="h-4 w-4 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div> Pembersihan...</>
+                           ) : <><i className="bi bi-stars"></i> Bersihkan Database</>}
+                        </button>
+                        <button onClick={handleCleanupEmptyRows} disabled={syncing} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all flex items-center justify-center gap-3 shadow-md shadow-amber-500/10">
+                           <i className="bi bi-eraser-fill text-sm"></i> Bersihkan Baris Kosong / Rusak
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* RESET DATABASE */}
+                  <div className="p-8 bg-gray-900 border border-black rounded-[2.5rem] space-y-4">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-rose-700 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg"><i className="bi bi-trash-fill"></i></div>
+                        <h5 className="text-[12px] font-black text-white uppercase tracking-widest">Reset Total Database</h5>
+                     </div>
+                     <p className="text-[9px] text-gray-400 font-bold uppercase">Hapus seluruh data pegawai secara permanen dari server!</p>
+                     <button onClick={handleResetAllData} disabled={syncing} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-rose-700 active:scale-95 transition-all">
+                        Reset Total Pegawai
+                     </button>
+                  </div>
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* USER MODAL */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-gray-950/70 backdrop-blur-md" onClick={() => !loading && setIsUserModalOpen(false)}></div>
+           <div className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden animate-modalEnter flex flex-col max-h-[90vh] border border-white/20">
+              {/* STICKY HEADER */}
+              <div className="p-8 border-b bg-gray-50 shrink-0 flex justify-between items-center relative z-30">
+                 <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl shadow-inner"><i className="bi bi-person-badge-fill"></i></div>
+                    <h4 className="text-xl font-black uppercase text-gray-950 tracking-tighter">Otorisasi Admin</h4>
+                 </div>
+                 <button onClick={() => setIsUserModalOpen(false)} className="h-12 w-12 flex items-center justify-center text-gray-400 hover:text-rose-500 bg-white border border-gray-100 rounded-2xl shadow-sm transition-all hover:shadow-md active:scale-95">
+                    <i className="bi bi-x-lg text-xl"></i>
+                 </button>
+              </div>
+              {/* SCROLLABLE BODY */}
+              <div className="flex-1 p-10 space-y-4 overflow-y-auto custom-scrollbar bg-white">
+                 <div className="space-y-1.5"><label className="text-[9px] font-black text-gray-400 uppercase ml-2">NIP Pegawai</label><input type="text" className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xs font-black outline-none" value={userFormData.nip || ''} onChange={e => setUserFormData({...userFormData, nip: e.target.value.replace(/\D/g, '')})} /></div>
+                 <div className="space-y-1.5"><label className="text-[9px] font-black text-gray-400 uppercase ml-2">Nama Lengkap</label><input type="text" className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xs font-black uppercase outline-none" value={userFormData.name || ''} onChange={e => setUserFormData({...userFormData, name: e.target.value})} /></div>
+                 <div className="space-y-1.5">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Kata Sandi</label>
+                   <div className="relative group/pass">
+                     <input 
+                       type={showPassword ? "text" : "password"} 
+                       placeholder="••••••••" 
+                       className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm" 
+                       value={userFormData.password || ''} 
+                       onChange={e => setUserFormData({...userFormData, password: e.target.value})} 
+                     />
+                     <button 
+                       type="button"
+                       onClick={() => setShowPassword(!showPassword)}
+                       className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-gray-400 hover:text-blue-600 transition-colors"
+                     >
+                       <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'} text-lg`}></i>
+                     </button>
+                   </div>
+                 </div>
+                 <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Pilih Role Akses (Dapat Memilih Lebih Dari Satu)</label>
+                     <span className="text-[8px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                       {normalizeRolesList(userFormData.roles, userFormData.role).length} Role Terpilih
+                     </span>
+                   </div>
+                   <div className="grid grid-cols-1 gap-2 p-3 bg-gray-50/80 rounded-2xl border border-gray-100 max-h-64 overflow-y-auto custom-scrollbar">
+                     {ALL_SYSTEM_ROLES.map(roleItem => {
+                       const assignedRoles = normalizeRolesList(userFormData.roles, userFormData.role);
+                       const isSelected = assignedRoles.includes(roleItem.id);
+                       const isPrimary = (userFormData.role || assignedRoles[0]) === roleItem.id;
+
+                       return (
+                         <div
+                           key={roleItem.id}
+                           onClick={() => {
+                             const exists = assignedRoles.includes(roleItem.id);
+                             let nextRoles: string[];
+                             if (exists) {
+                               nextRoles = assignedRoles.filter(r => r !== roleItem.id);
+                               if (nextRoles.length === 0) nextRoles = ['Viewer'];
+                             } else {
+                               nextRoles = [...assignedRoles, roleItem.id];
+                             }
+                             const nextPrimary = nextRoles.includes(userFormData.role as string)
+                               ? userFormData.role
+                               : nextRoles[0];
+                             setUserFormData({
+                               ...userFormData,
+                               roles: nextRoles,
+                               role: nextPrimary
+                             });
+                           }}
+                           className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 select-none ${
+                             isSelected 
+                               ? 'bg-white border-blue-600 shadow-xs' 
+                               : 'bg-white/60 border-transparent hover:border-gray-200'
+                           }`}
+                         >
+                           <div className={`mt-0.5 h-5 w-5 rounded-lg flex items-center justify-center text-xs transition-colors shrink-0 ${
+                             isSelected ? 'bg-blue-600 text-white' : 'border border-gray-300 bg-white text-transparent'
+                           }`}>
+                             <i className="bi bi-check-lg font-black"></i>
+                           </div>
+                           <div className="flex-1 min-w-0">
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                 <p className="text-[11px] font-black uppercase text-gray-900">{roleItem.label}</p>
+                                 {isPrimary && (
+                                   <span className="text-[7px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Utama</span>
+                                 )}
+                               </div>
+                               {isSelected && !isPrimary && (
+                                 <button
+                                   type="button"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setUserFormData({
+                                       ...userFormData,
+                                       roles: assignedRoles,
+                                       role: roleItem.id
+                                     });
+                                   }}
+                                   className="text-[8px] font-bold text-blue-600 hover:text-blue-800 underline uppercase"
+                                 >
+                                   Jadikan Utama
+                                 </button>
+                               )}
+                             </div>
+                             <p className="text-[9px] text-gray-400 font-medium line-clamp-2 mt-0.5">{roleItem.desc}</p>
+                           </div>
+                         </div>
+                       );
+                     })}
+                   </div>
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Status Akun</label>
+                   <div className="flex gap-2">
+                     {['Aktif', 'Nonaktif'].map((s) => (
+                       <button
+                         key={s}
+                         type="button"
+                         onClick={() => setUserFormData({...userFormData, status: s as any})}
+                         className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+                           (userFormData.status || 'Aktif') === s 
+                           ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                           : 'bg-gray-50 border-gray-100 text-gray-400'
+                         }`}
+                       >
+                         {s}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+              </div>
+              {/* STICKY FOOTER */}
+              <div className="p-8 bg-gray-50 border-t shrink-0 flex gap-3 relative z-30">
+                 <button onClick={() => setIsUserModalOpen(false)} className="flex-1 py-4 bg-white border border-gray-200 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Batalkan</button>
+                 <button onClick={() => handleUserAction('SAVE')} disabled={loading} className="flex-[1.5] py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase shadow-xl shadow-blue-600/30 active:scale-95 disabled:bg-blue-300">
+                    {loading ? 'Processing...' : 'Simpan User'}
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+      
+
+      {/* MODAL PANDUAN & KODE APPS SCRIPT */}
+      {showScriptModal && (
+        <div className="fixed inset-0 z-[10010] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-gray-950/70 backdrop-blur-sm animate-fadeIn" 
+            onClick={() => setShowScriptModal(false)}
+          ></div>
+          
+          <div className="relative bg-white w-full max-w-3xl rounded-[2.5rem] shadow-2xl p-6 md:p-8 flex flex-col animate-modalEnter border border-gray-100 max-h-[92vh] overflow-hidden text-gray-950 z-20">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-inner shrink-0">
+                  <i className="bi bi-file-earmark-code-fill text-2xl"></i>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-950 uppercase tracking-tight">
+                    Panduan & Kode Google Apps Script
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-bold">
+                    Mengatasi UPLOAD_ERROR: Exception: 存取遭拒：DriveApp (Access Denied)
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowScriptModal(false)}
+                className="h-10 w-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <i className="bi bi-x-lg text-lg"></i>
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto py-5 space-y-6 custom-scrollbar pr-2 flex-1 text-[11px]">
+              {/* Critical Notice */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 font-black text-amber-900 uppercase tracking-wide text-[11px]">
+                  <i className="bi bi-exclamation-triangle-fill text-amber-600 text-base"></i>
+                  <span>Mengapa Muncul Pesan &ldquo;存取遭拒：DriveApp&rdquo;?</span>
+                </div>
+                <p className="text-gray-700 leading-relaxed">
+                  Error ini berarti Google Apps Script ditolak hak aksesnya saat mencoba membuat atau menyimpan file ke Google Drive. Hal ini terjadi jika script di-deploy dengan opsi yang salah atau belum diberi izin melalui fungsi setup.
+                </p>
+              </div>
+
+              {/* 4 Steps Guide */}
+              <div className="space-y-3">
+                <h4 className="font-black text-gray-900 uppercase tracking-widest text-[10px]">
+                  4 Langkah Solusi Cepat:
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="h-5 w-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center">1</span>
+                      <strong className="text-gray-900 font-bold uppercase text-[10px]">Salin Kode Terbaru</strong>
+                    </div>
+                    <p className="text-gray-600 text-[10px] leading-relaxed">
+                      Klik tombol &ldquo;Salin Seluruh Kode Script&rdquo; di bawah, lalu buka Google Sheets &gt; <strong>Ekstensi</strong> &gt; <strong>Apps Script</strong>. Hapus seluruh isi kode lama dan tempel (Paste) kode ini.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="h-5 w-5 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center">2</span>
+                      <strong className="text-emerald-950 font-bold uppercase text-[10px]">Jalankan Fungsi Setup</strong>
+                    </div>
+                    <p className="text-gray-600 text-[10px] leading-relaxed">
+                      Di toolbar atas editor Apps Script, pada menu pilihan fungsi (di samping tombol Run/Debug), pilih fungsi <code className="bg-emerald-100 px-1 py-0.5 rounded font-mono font-bold text-emerald-800">setup</code> lalu klik tombol <strong>Run (Jalankan)</strong>. Setujui permintaan izin Google Drive &amp; Sheets.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-rose-50/70 rounded-2xl border border-rose-100 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="h-5 w-5 rounded-full bg-rose-600 text-white font-black text-[10px] flex items-center justify-center">3</span>
+                      <strong className="text-rose-950 font-bold uppercase text-[10px]">Deploy Web App (Penting!)</strong>
+                    </div>
+                    <p className="text-gray-600 text-[10px] leading-relaxed">
+                      Klik tombol biru <strong>Deploy</strong> &gt; <strong>New deployment</strong> (atau <strong>Manage deployments</strong> &gt; Edit &gt; New version).<br/>
+                      &bull; <strong>Execute as:</strong> Pilih <span className="font-bold text-rose-700">&ldquo;Me (email Anda)&rdquo;</span> <em>(JANGAN pilih &ldquo;User accessing web app&rdquo;)</em>.<br/>
+                      &bull; <strong>Who has access:</strong> Pilih <span className="font-bold text-rose-700">&ldquo;Anyone&rdquo;</span>.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-sky-50/70 rounded-2xl border border-sky-100 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="h-5 w-5 rounded-full bg-sky-600 text-white font-black text-[10px] flex items-center justify-center">4</span>
+                      <strong className="text-sky-950 font-bold uppercase text-[10px]">Pasang Web App URL</strong>
+                    </div>
+                    <p className="text-gray-600 text-[10px] leading-relaxed">
+                      Salin URL Web App yang berakhiran <code className="bg-sky-100 px-1 py-0.5 rounded font-mono text-sky-800">/exec</code> dan tempelkan ke kolom <strong>Google Apps Script Web App URL</strong> di formulir pengaturan ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Code Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">
+                      Kode Backend Lengkap (GoogleAppsScript_Code.js v7.1)
+                    </span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full uppercase">
+                      51 Modul Resmi
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={downloadScriptFile}
+                      className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95"
+                      title="Unduh file Code.gs untuk diimpor ke Google Apps Script"
+                    >
+                      <i className="bi bi-download"></i>
+                      Unduh Code.gs
+                    </button>
+                    <button 
+                      onClick={copyScriptToClipboard}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                    >
+                      <i className={`bi ${copiedScript ? "bi-check2-circle" : "bi-clipboard-check"}`}></i>
+                      {copiedScript ? "Berhasil Disalin!" : "Salin Seluruh Kode Script"}
+                    </button>
+                  </div>
+                </div>
+                <div className="relative bg-gray-900 rounded-2xl p-4 overflow-hidden border border-gray-800">
+                  {loadingScript ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-2">
+                      <div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-[10px] font-bold uppercase">Memuat kode script...</span>
+                    </div>
+                  ) : (
+                    <pre className="text-[9px] font-mono text-emerald-400 overflow-x-auto max-h-72 custom-scrollbar whitespace-pre leading-relaxed select-all">
+                      {scriptCode}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky Footer */}
+            <div className="pt-4 border-t border-gray-100 flex justify-end shrink-0">
+              <button
+                onClick={() => setShowScriptModal(false)}
+                className="px-8 py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+              >
+                Tutup Panduan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      `}</style>
+    </div>
+  );
+};
+
+export default SettingsPage;

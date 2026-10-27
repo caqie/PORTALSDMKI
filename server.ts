@@ -1,0 +1,292 @@
+
+import express from "express";
+import { createServer } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { createServer as createViteServer } from "vite";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function startServer() {
+  const app = express();
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.text({ limit: "50mb", type: ["text/*", "application/json"] }));
+  const server = createServer(app);
+  const wss = new WebSocketServer({ server });
+  const PORT = 3000;
+
+  wss.on("error", (err) => {
+    console.warn("WebSocketServer warning/error handled:", err?.message || err);
+  });
+
+  // Store active sessions
+  // Map<sessionId, Set<WebSocket>>
+  const sessions = new Map<string, Set<WebSocket>>();
+  // Map<WebSocket, { sessionId: string, role: string, nip: string, name: string }>
+  const clients = new Map<WebSocket, { sessionId: string, role: string, nip: string, name: string }>();
+
+  wss.on("connection", (ws) => {
+    console.log("New WebSocket connection");
+
+    ws.on("error", (err) => {
+      console.warn("WebSocket client connection error handled:", err?.message || err);
+    });
+
+    ws.on("message", (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        const { type, sessionId, role, nip, name, payload } = data;
+
+        if (type === "join") {
+          console.log(`Client ${name} (${role}) joined session ${sessionId}`);
+          if (!sessions.has(sessionId)) {
+            sessions.set(sessionId, new Set());
+          }
+          sessions.get(sessionId)!.add(ws);
+          clients.set(ws, { sessionId, role, nip, name });
+          
+          // Notify others in the session
+          broadcastToSession(sessionId, {
+            type: "user_joined",
+            role,
+            nip,
+            name
+          }, ws);
+        }
+
+        if (type === "camera_frame") {
+          // Relay camera frame to supervisors in the same session
+          broadcastToSession(sessionId, {
+            type: "camera_frame",
+            nip,
+            name,
+            frame: payload
+          }, ws, "supervisor");
+        }
+
+        if (type === "exam_status") {
+          // Relay exam status to supervisors
+          broadcastToSession(sessionId, {
+            type: "exam_status",
+            nip,
+            name,
+            status: payload
+          }, ws, "supervisor");
+        }
+
+        if (type === "grading_update") {
+           // Relay grading update to all supervisors (to sync UI)
+           broadcastToSession(sessionId, {
+             type: "grading_update",
+             payload
+           }, ws, "supervisor");
+        }
+
+      } catch (e) {
+        console.error("Error processing message:", e);
+      }
+    });
+
+    ws.on("close", () => {
+      const clientInfo = clients.get(ws);
+      if (clientInfo) {
+        const { sessionId, role, nip, name } = clientInfo;
+        console.log(`Client ${name} (${role}) left session ${sessionId}`);
+        sessions.get(sessionId)?.delete(ws);
+        if (sessions.get(sessionId)?.size === 0) {
+          sessions.delete(sessionId);
+        }
+        clients.delete(ws);
+
+        broadcastToSession(sessionId, {
+          type: "user_left",
+          role,
+          nip,
+          name
+        });
+      }
+    });
+  });
+
+  function broadcastToSession(sessionId: string, data: any, excludeWs?: WebSocket, targetRole?: string) {
+    const sessionClients = sessions.get(sessionId);
+    if (sessionClients) {
+      const message = JSON.stringify(data);
+      sessionClients.forEach((client) => {
+        if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
+          if (!targetRole || clients.get(client)?.role === targetRole) {
+            client.send(message);
+          }
+        }
+      });
+    }
+  }
+
+  // API routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Serve Google Apps Script Code for easy copying in frontend
+  app.get("/api/apps-script-code", (req, res) => {
+    try {
+      const codePath = path.join(process.cwd(), "GoogleAppsScript_Code.js");
+      if (fs.existsSync(codePath)) {
+        const code = fs.readFileSync(codePath, "utf-8");
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.send(code);
+        return;
+      }
+      res.status(404).send("// GoogleAppsScript_Code.js not found");
+    } catch (e: any) {
+      res.status(500).send("// Error loading code: " + e.message);
+    }
+  });
+
+  // Spreadsheet Config Endpoints
+  const configPath = path.join(process.cwd(), "spreadsheet-config.json");
+
+  app.get("/api/spreadsheet-config", (req, res) => {
+    try {
+      if (fs.existsSync(configPath)) {
+        const fileContent = fs.readFileSync(configPath, "utf-8");
+        const parsed = JSON.parse(fileContent);
+        res.json(parsed);
+        return;
+      }
+    } catch (e) {
+      console.error("Error reading spreadsheet config file:", e);
+    }
+    
+    // Fallback to default values
+    res.json({
+      spreadsheetId: process.env.VITE_SPREADSHEET_ID || "1Bh77MMU8d6fgNTKhovLE5MkG0-3CjW9cNXRZl2GyPR4",
+      appsScriptUrl: process.env.VITE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycby8dTUPkAb1f8EeH3DxXjTd9IZ-yAMUWxSfci9ZBLkMf3gxH3as4GlALPtER6JM-BWD/exec",
+      driveFolderId: process.env.VITE_DRIVE_FOLDER_ID || "19OkO6ZAMnTXaxy-58ntHRVNI85W-u23O"
+    });
+  });
+
+  app.post("/api/spreadsheet-config", (req, res) => {
+    try {
+      const { spreadsheetId, appsScriptUrl, driveFolderId } = req.body;
+      const newConfig = {
+        spreadsheetId: spreadsheetId || "1Bh77MMU8d6fgNTKhovLE5MkG0-3CjW9cNXRZl2GyPR4",
+        appsScriptUrl: appsScriptUrl || "https://script.google.com/macros/s/AKfycby8dTUPkAb1f8EeH3DxXjTd9IZ-yAMUWxSfci9ZBLkMf3gxH3as4GlALPtER6JM-BWD/exec",
+        driveFolderId: driveFolderId || "19OkO6ZAMnTXaxy-58ntHRVNI85W-u23O"
+      };
+      fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), "utf-8");
+      res.json({ success: true, config: newConfig });
+    } catch (e: any) {
+      console.error("Error saving spreadsheet config file:", e);
+      res.status(500).json({ success: false, error: e.message || String(e) });
+    }
+  });
+
+  // Generic Proxy Route to bypass CORS and client-side "Failed to fetch"
+  app.all("/api/proxy", async (req, res) => {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl) {
+      res.status(400).json({ error: "Missing 'url' query parameter" });
+      return;
+    }
+
+    // Set 5-minute timeout for this request socket to allow Apps Script execution
+    req.setTimeout(300_000);
+    res.setTimeout(300_000);
+
+    try {
+      const method = (req.method || "GET").toUpperCase();
+      const headers: Record<string, string> = {};
+
+      if (req.headers["content-type"]) {
+        headers["content-type"] = req.headers["content-type"] as string;
+      }
+      if (req.headers["accept"]) {
+        headers["accept"] = req.headers["accept"] as string;
+      }
+
+      let bodyData: any = undefined;
+      if (method !== "GET" && method !== "HEAD") {
+        if (typeof req.body === "object" && Object.keys(req.body).length > 0) {
+          bodyData = JSON.stringify(req.body);
+          if (!headers["content-type"]) {
+            headers["content-type"] = "application/json";
+          }
+        } else if (req.body) {
+          bodyData = req.body;
+        }
+      }
+
+      const buildOptions = () => ({
+        method,
+        headers,
+        body: bodyData,
+        redirect: "follow" as const,
+        signal: AbortSignal.timeout(300_000)
+      });
+
+      let response: Response;
+      try {
+        response = await fetch(targetUrl, buildOptions());
+      } catch (firstErr: any) {
+        // If transient timeout or socket reset occurs, retry once after a short wait
+        console.warn(`[Proxy Warning] First attempt failed for ${targetUrl}: ${firstErr?.message}. Retrying once...`);
+        await new Promise(r => setTimeout(r, 1200));
+        response = await fetch(targetUrl, buildOptions());
+      }
+
+      const responseContentType = response.headers.get("content-type") || "text/plain";
+      res.setHeader("Content-Type", responseContentType);
+
+      if (responseContentType.includes("json")) {
+        const json = await response.json();
+        res.json(json);
+      } else {
+        const text = await response.text();
+        res.send(text);
+      }
+    } catch (error: any) {
+      const isTimeout = error?.name === 'HeadersTimeoutError' || 
+                        error?.name === 'TimeoutError' || 
+                        error?.message?.includes('timeout') || 
+                        error?.message?.includes('Timeout');
+      console.error(`[Proxy Error] ${isTimeout ? 'Timeout' : 'Failure'} for URL: ${targetUrl}`, error);
+      res.status(isTimeout ? 504 : 502).json({ 
+        error: isTimeout ? "Gateway Timeout: Google Apps Script took too long to respond." : "Failed to fetch via proxy", 
+        details: error?.message || String(error) 
+      });
+    }
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { 
+        middlewareMode: true,
+        hmr: false
+      },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*all", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  server.on("error", (err: any) => {
+    console.error("HTTP/WebSocket server error:", err?.message || err);
+  });
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
