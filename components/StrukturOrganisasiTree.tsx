@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Pegawai } from '../types';
+import { safeJsonToSheet, safeWriteExcel } from '../lib/excelSanitizer';
 import {
   PopulatedOrganisasiNode,
   OrganisasiNodeDef,
   buildPopulatedOrganisasiTree,
-  getAtasanLangsung
+  getAtasanLangsung,
+  getAllPegawaiForNode
 } from '../services/strukturOrganisasiService';
 
 interface Props {
@@ -71,6 +74,135 @@ export const StrukturOrganisasiTree: React.FC<Props> = ({
 
   const collapseAll = () => {
     setExpandedNodeIds(new Set(['ditjen-ki']));
+  };
+
+  const handleExportSOTKExcel = (targetNode?: PopulatedOrganisasiNode) => {
+    const isTargeted = Boolean(targetNode && targetNode.id !== 'ditjen-ki');
+    const startNode = targetNode || rootNode;
+
+    const wb = XLSX.utils.book_new();
+
+    const autoFitColumns = (ws: XLSX.WorkSheet, data: any[]) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => {
+        let maxLen = k.length;
+        data.forEach(row => {
+          const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 60) };
+      });
+    };
+
+    // 1. Flatten all hierarchy nodes under startNode
+    const collectNodes = (n: PopulatedOrganisasiNode, parentNama = '-'): any[] => {
+      const levelLabelMap: Record<string, string> = {
+        ditjen: 'Eselon I (Ditjen)',
+        direktorat: 'Eselon II (Direktorat / Setditjen)',
+        subdit_bagian: 'Eselon III (Subdit / Bagian)',
+        subbagian: 'Eselon IV (Subbagian TU / Seksi)'
+      };
+
+      const rows: any[] = [{
+        node: n,
+        levelLabel: levelLabelMap[n.level] || n.level,
+        parentNama
+      }];
+
+      if (n.children && n.children.length > 0) {
+        n.children.forEach(c => {
+          rows.push(...collectNodes(c, n.nama));
+        });
+      }
+      return rows;
+    };
+
+    const flatNodes = collectNodes(startNode, startNode.parentId ? 'Unit Terkait' : 'Kementerian Hukum RI');
+
+    // Sheet 1: Struktur & Pimpinan SOTK
+    const strukturRows = flatNodes.map((item, idx) => {
+      const n: PopulatedOrganisasiNode = item.node;
+      return {
+        'No': idx + 1,
+        'Tingkat / Eselon': item.levelLabel,
+        'Nama Satuan Kerja SOTK': n.nama,
+        'Singkatan': n.shortName || '-',
+        'Unit Atasan Langsung': item.parentNama,
+        'Status Pimpinan': n.pimpinan ? 'Terisi' : 'Plt / Menginduk',
+        'Nama Pimpinan / Penilai': n.pimpinan ? n.pimpinan.nama : '(Plt / Belum Terpetakan)',
+        'NIP Pimpinan': n.pimpinan ? n.pimpinan.nip : '-',
+        'Gol/Ruang Pimpinan': n.pimpinan ? (n.pimpinan.golRuang || '-') : '-',
+        'Jabatan Pimpinan': n.pimpinan ? n.pimpinan.jabatan : '-',
+        'Staf Terpetakan Langsung (Orang)': n.directPegawai ? n.directPegawai.length : 0,
+        'Total Pegawai Di Bawah Unit (Orang)': n.totalPegawai || 0
+      };
+    });
+
+    const wsStruktur = safeJsonToSheet(strukturRows);
+    autoFitColumns(wsStruktur, strukturRows);
+    XLSX.utils.book_append_sheet(wb, wsStruktur, "Hierarki & Pimpinan SOTK");
+
+    // Sheet 2: Daftar Seluruh Personil SOTK & Atasan Penilai
+    const relevantPegawaiList = isTargeted ? getAllPegawaiForNode(startNode) : allPegawai;
+    const pegawaiRows = relevantPegawaiList.map((p, idx) => {
+      const atasanInfo = getAtasanLangsung(p, allPegawai);
+      return {
+        'No': idx + 1,
+        'NIP': p.nip || '-',
+        'Nama Pegawai': p.nama || '-',
+        'Jenis Pegawai': p.jenisPegawai || 'PNS',
+        'Pangkat': p.pangkat || '-',
+        'Gol/Ruang': p.golRuang || '-',
+        'Jabatan': p.jabatan || '-',
+        'Unit Kerja SOTK': atasanInfo.unitNode.nama || p.unitKerja || '-',
+        'Sub Unit SOTK': atasanInfo.unitNode.shortName || '-',
+        'Tingkat Hierarki': atasanInfo.levelLabel || '-',
+        'Pejabat Penilai Kinerja (Atasan)': atasanInfo.atasan ? atasanInfo.atasan.nama : 'Menteri Hukum RI',
+        'NIP Penilai Kinerja': atasanInfo.atasan ? atasanInfo.atasan.nip : '-',
+        'Jabatan Penilai Kinerja': atasanInfo.atasan ? atasanInfo.atasan.jabatan : 'Menteri Hukum RI',
+        'Status Kepegawaian': p.status || 'Aktif'
+      };
+    });
+
+    const wsPegawai = safeJsonToSheet(pegawaiRows);
+    autoFitColumns(wsPegawai, pegawaiRows);
+    XLSX.utils.book_append_sheet(wb, wsPegawai, isTargeted ? "Personil Unit Ini" : "Pemetaan Seluruh Pegawai");
+
+    // Sheet 3: Ringkasan Rekapitulasi Level SOTK
+    const levelCounts: Record<string, { label: string; unitCount: number; pegawaiCount: number }> = {
+      ditjen: { label: 'Eselon I - Direktorat Jenderal', unitCount: 0, pegawaiCount: 0 },
+      direktorat: { label: 'Eselon II - Direktorat / Sekretariat', unitCount: 0, pegawaiCount: 0 },
+      subdit_bagian: { label: 'Eselon III - Subdirektorat / Bagian', unitCount: 0, pegawaiCount: 0 },
+      subbagian: { label: 'Eselon IV - Subbagian TU / Seksi', unitCount: 0, pegawaiCount: 0 }
+    };
+
+    flatNodes.forEach(item => {
+      const lvl = item.node.level;
+      if (levelCounts[lvl]) {
+        levelCounts[lvl].unitCount++;
+        levelCounts[lvl].pegawaiCount += (item.node.directPegawai ? item.node.directPegawai.length : 0);
+      }
+    });
+
+    const rekapRows = Object.values(levelCounts).map((val, idx) => ({
+      'No': idx + 1,
+      'Tingkat Level SOTK': val.label,
+      'Jumlah Unit Organisasi': val.unitCount,
+      'Jumlah Staf Terpetakan Langsung': val.pegawaiCount,
+      'Persentase Pegawai': relevantPegawaiList.length > 0 ? `${((val.pegawaiCount / relevantPegawaiList.length) * 100).toFixed(1)}%` : '0%'
+    }));
+
+    const wsRekap = safeJsonToSheet(rekapRows);
+    autoFitColumns(wsRekap, rekapRows);
+    XLSX.utils.book_append_sheet(wb, wsRekap, "Rekap Level SOTK");
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const fileName = isTargeted
+      ? `SOTK_DJKI_${(startNode.shortName || startNode.nama).replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr}.xlsx`
+      : `Bagan_Struktur_Organisasi_SOTK_DJKI_${dateStr}.xlsx`;
+
+    safeWriteExcel(wb, fileName);
   };
 
   const getNodeBadgeColor = (colorType: OrganisasiNodeDef['colorType']) => {
@@ -241,19 +373,28 @@ export const StrukturOrganisasiTree: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Kontrol Buka/Tutup & Pencarian */}
-          <div className="flex items-center gap-2">
+          {/* Kontrol Buka/Tutup & Export Excel */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleExportSOTKExcel()}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Unduh seluruh struktur hierarki SOTK DJKI dan pemetaan pegawai ke file Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill text-xs"></i>
+              <span>Unduh Excel SOTK</span>
+            </button>
             <button
               type="button"
               onClick={expandAll}
-              className="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              className="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
             >
               <i className="bi bi-arrows-expand mr-1"></i> Buka Semua
             </button>
             <button
               type="button"
               onClick={collapseAll}
-              className="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              className="px-2.5 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
             >
               <i className="bi bi-arrows-collapse mr-1"></i> Tutup
             </button>
@@ -446,15 +587,27 @@ export const StrukturOrganisasiTree: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Tombol Filter Daftar Pegawai */}
-        {activeDetailNode && onSelectNode && (
-          <button
-            type="button"
-            onClick={() => onSelectNode(activeDetailNode)}
-            className="w-full mt-4 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-colors cursor-pointer"
-          >
-            <i className="bi bi-funnel-fill"></i> Tampilkan {activeDetailNode.totalPegawai} Pegawai di Tabel
-          </button>
+        {/* Tombol Aksi Detail Satuan Kerja */}
+        {activeDetailNode && (
+          <div className="space-y-2 mt-4">
+            <button
+              type="button"
+              onClick={() => handleExportSOTKExcel(activeDetailNode)}
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+              title={`Unduh data unit ${activeDetailNode.nama} dan seluruh personilnya ke file Excel`}
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i> Unduh Excel Unit Ini ({activeDetailNode.totalPegawai} ASN)
+            </button>
+            {onSelectNode && (
+              <button
+                type="button"
+                onClick={() => onSelectNode(activeDetailNode)}
+                className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-colors cursor-pointer active:scale-95"
+              >
+                <i className="bi bi-funnel-fill"></i> Tampilkan {activeDetailNode.totalPegawai} Pegawai di Tabel
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

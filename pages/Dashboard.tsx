@@ -109,6 +109,7 @@ const Dashboard = () => {
   const [filterJenisEdu, setFilterJenisEdu] = useState('Semua Jenis');
   const [filterJenisGender, setFilterJenisGender] = useState('Semua Jenis');
   const [filterJenisGrade, setFilterJenisGrade] = useState('Semua Jenis');
+  const [filterJenisAge, setFilterJenisAge] = useState('Semua Jenis');
 
   // Helper for Kelas Jabatan sesuai Permenkumham No. 38 Tahun 2025
   const getKelasJabatan = (p: Pegawai): string => {
@@ -266,32 +267,103 @@ const Dashboard = () => {
 
   const handleDownloadClusterStats = () => {
     const wb = XLSX.utils.book_new();
+
+    const autoFitColumns = (ws: XLSX.WorkSheet, data: any[]) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => {
+        let maxLen = k.length;
+        data.forEach(row => {
+          const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 55) };
+      });
+    };
     
     // Sheet 1: Summary
     const summaryRows = [
-      ["REKAPITULASI KLASTER JABATAN ASN"],
+      ["REKAPITULASI KLASTER JABATAN ASN DJKI"],
       ["DICETAK PADA:", new Date().toLocaleString('id-ID')],
       [],
       ["KLASTER JABATAN", "DESKRIPSI", "PEMANGKU (ORANG)", "NOMENKLATUR (UNIK)", "PERSENTASE"],
-      ["JABATAN PIMPINAN TINGGI", "ESELON I & II", classificationStats.jpt, classificationStats.jptUnique, `${(classificationStats.jpt/classificationStats.total*100).toFixed(1)}%`],
-      ["JABATAN STRUKTURAL", "ESELON III & IV", classificationStats.struktural, classificationStats.strukturalUnique, `${(classificationStats.struktural/classificationStats.total*100).toFixed(1)}%`],
-      ["JABATAN FUNGSIONAL", "TENAGA AHLI/JFT", classificationStats.fungsional, classificationStats.fungsionalUnique, `${(classificationStats.fungsional/classificationStats.total*100).toFixed(1)}%`],
-      ["PELAKSANA", "FUNGSIONAL UMUM/STAF", classificationStats.pelaksana, classificationStats.pelaksanaUnique, `${(classificationStats.pelaksana/classificationStats.total*100).toFixed(1)}%`],
+      ["JABATAN PIMPINAN TINGGI", "ESELON I & II (HIGH LEVEL LEADERSHIP)", classificationStats.jpt, classificationStats.jptUnique, `${(classificationStats.jpt/classificationStats.total*100).toFixed(1)}%`],
+      ["JABATAN STRUKTURAL", "ESELON III & IV (ADMINISTRATOR & PENGAWAS)", classificationStats.struktural, classificationStats.strukturalUnique, `${(classificationStats.struktural/classificationStats.total*100).toFixed(1)}%`],
+      ["JABATAN FUNGSIONAL", "TENAGA AHLI & JFT SPESIFIK", classificationStats.fungsional, classificationStats.fungsionalUnique, `${(classificationStats.fungsional/classificationStats.total*100).toFixed(1)}%`],
+      ["PELAKSANA", "FUNGSIONAL UMUM & DUKUNGAN OPERASIONAL", classificationStats.pelaksana, classificationStats.pelaksanaUnique, `${(classificationStats.pelaksana/classificationStats.total*100).toFixed(1)}%`],
       [],
-      ["TOTAL KESELURUHAN", "", classificationStats.total, classificationStats.totalUnique, "100%"]
+      ["TOTAL KESELURUHAN", "SELURUH ASN AKTIF DJKI", classificationStats.total, classificationStats.totalUnique, "100%"]
     ];
     const wsSummary = safeAoaToSheet(summaryRows);
+    wsSummary['!cols'] = [{ wch: 30 }, { wch: 45 }, { wch: 20 }, { wch: 22 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan Klaster");
 
-    // Sheet 2: Unique Nomenclature
-    const nomenclatureRows = [["DAFTAR NOMENKLATUR JABATAN UNIK"], ["KLASTER", "NAMA JABATAN"]];
-    
-    classificationStats.jptTitles.forEach(t => nomenclatureRows.push(["JPT", t]));
-    classificationStats.strukturalTitles.forEach(t => nomenclatureRows.push(["STRUKTURAL", t]));
-    classificationStats.fungsionalTitles.forEach(t => nomenclatureRows.push(["FUNGSIONAL", t]));
-    classificationStats.pelaksanaTitles.forEach(t => nomenclatureRows.push(["PELAKSANA", t]));
+    // Sheet 2: Unique Nomenclature Details with full breakdown
+    const uniqueMap: Record<string, {
+      jabatan: string;
+      klasifikasi: string;
+      kelasJabatan: string;
+      pns: number;
+      cpns: number;
+      pppk: number;
+      pppkParuh: number;
+      total: number;
+      units: Set<string>;
+    }> = {};
 
-    const wsNom = safeAoaToSheet(nomenclatureRows);
+    activePegawaiList.forEach(p => {
+      const jab = (p.jabatan || 'TANPA JABATAN').trim().toUpperCase();
+      const klas = getJabatanClassification(p);
+      const kelas = getKelasJabatan(p);
+      const jen = (p.jenisPegawai || 'PNS').trim().toUpperCase();
+      const unit = normalizeUnitName(p.unitKerja);
+
+      if (!uniqueMap[jab]) {
+        uniqueMap[jab] = {
+          jabatan: jab,
+          klasifikasi: klas,
+          kelasJabatan: kelas,
+          pns: 0,
+          cpns: 0,
+          pppk: 0,
+          pppkParuh: 0,
+          total: 0,
+          units: new Set<string>()
+        };
+      }
+      if (jen === 'PNS') uniqueMap[jab].pns++;
+      else if (jen.includes('CPNS')) uniqueMap[jab].cpns++;
+      else if (jen.includes('PARUH')) uniqueMap[jab].pppkParuh++;
+      else if (jen.includes('PPPK')) uniqueMap[jab].pppk++;
+      else uniqueMap[jab].pns++;
+
+      uniqueMap[jab].total++;
+      if (unit && unit !== '-') uniqueMap[jab].units.add(unit);
+    });
+
+    const nomRows = Object.values(uniqueMap)
+      .sort((a, b) => {
+        const order: Record<string, number> = { 'JPT': 1, 'STRUKTURAL': 2, 'FUNGSIONAL': 3, 'PELAKSANA': 4 };
+        const oA = order[a.klasifikasi] || 5;
+        const oB = order[b.klasifikasi] || 5;
+        if (oA !== oB) return oA - oB;
+        return b.total - a.total || a.jabatan.localeCompare(b.jabatan);
+      })
+      .map((item, idx) => ({
+        'No': idx + 1,
+        'Klaster Jabatan': item.klasifikasi,
+        'Nama Nomenklatur Jabatan': item.jabatan,
+        'Kelas Jabatan (Permen 38)': item.kelasJabatan,
+        'PNS': item.pns,
+        'CPNS': item.cpns,
+        'PPPK': item.pppk,
+        'PPPK Paruh Waktu': item.pppkParuh,
+        'Total Pemangku': item.total,
+        'Sebaran Unit Kerja': Array.from(item.units).join('; ') || 'DJKI'
+      }));
+
+    const wsNom = safeJsonToSheet(nomRows);
+    autoFitColumns(wsNom, nomRows);
     XLSX.utils.book_append_sheet(wb, wsNom, "Daftar Nomenklatur");
 
     safeWriteExcel(wb, `Rekap_Klaster_Jabatan_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -493,6 +565,61 @@ const Dashboard = () => {
     });
   }, [activePegawaiList, filterJenisGrade]);
 
+  const ageStats = useMemo(() => {
+    const filteredList = activePegawaiList.filter(p => {
+      if (filterJenisAge === 'Semua Jenis') return true;
+      const jen = (p.jenisPegawai || '').toUpperCase();
+      const target = filterJenisAge.toUpperCase();
+      if (target === 'PPPK') return jen.includes('PPPK') && !jen.includes('PARUH');
+      if (target === 'PNS') return jen === 'PNS';
+      return jen.includes(target);
+    });
+
+    const groups: Record<string, { label: string; count: number; color: string; bgLight: string; desc: string }> = {
+      under30: { label: '< 30 Tahun', count: 0, color: 'text-emerald-700', bgLight: 'bg-emerald-500', desc: 'Gen Z / Calon Pemimpin Masa Depan' },
+      age3039: { label: '30 - 39 Tahun', count: 0, color: 'text-blue-700', bgLight: 'bg-blue-500', desc: 'Milenial Produktif / Tenaga Ahli' },
+      age4049: { label: '40 - 49 Tahun', count: 0, color: 'text-indigo-700', bgLight: 'bg-indigo-500', desc: 'Gen X Matang / Pengawas & Ahli Madya' },
+      age5057: { label: '50 - 57 Tahun', count: 0, color: 'text-amber-700', bgLight: 'bg-amber-500', desc: 'Senior Leader / Administrator & JPT' },
+      above58: { label: '≥ 58 Tahun', count: 0, color: 'text-rose-700', bgLight: 'bg-rose-500', desc: 'Masa Persiapan Pensiun (BUP)' }
+    };
+
+    let totalRecorded = 0;
+    const currentYear = new Date().getFullYear();
+
+    filteredList.forEach(p => {
+      let age: number | null = null;
+      const cleanNip = String(p.nip || '').replace(/\D/g, '');
+      if (cleanNip.length >= 8) {
+        const y = parseInt(cleanNip.substring(0, 4));
+        const m = parseInt(cleanNip.substring(4, 6)) - 1;
+        if (y > 1940 && y <= currentYear && m >= 0 && m < 12) {
+          age = currentYear - y;
+        }
+      }
+      const birthDateStr = p.tanggalLahir || (p as any).tglLahir;
+      if (age === null && birthDateStr) {
+        const d = new Date(birthDateStr);
+        if (!isNaN(d.getTime())) {
+          age = currentYear - d.getFullYear();
+        }
+      }
+
+      if (age !== null && age >= 18 && age < 85) {
+        totalRecorded++;
+        if (age < 30) groups.under30.count++;
+        else if (age <= 39) groups.age3039.count++;
+        else if (age <= 49) groups.age4049.count++;
+        else if (age <= 57) groups.age5057.count++;
+        else groups.above58.count++;
+      }
+    });
+
+    return {
+      list: Object.values(groups),
+      totalRecorded
+    };
+  }, [activePegawaiList, filterJenisAge]);
+
   const reminders = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -601,154 +728,360 @@ const Dashboard = () => {
 
   const handleDownloadFullAnalytics = () => {
     const wb = XLSX.utils.book_new();
+
+    const autoFitColumns = (ws: XLSX.WorkSheet, data: any[]) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => {
+        let maxLen = k.length;
+        data.forEach(row => {
+          const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 55) };
+      });
+    };
     
     // 1. Sebaran Unit
-    const unitWs = safeJsonToSheet(unitDistribution.map(u => ({ 
+    const unitRows = unitDistribution.map((u, i) => ({ 
+      'No': i + 1,
       'Unit Kerja Pengampu': u.unit, 
-      'PNS': u.pns, 'CPNS': u.cpns, 'PPPK': u.pppk, 'PPPK Paruh Waktu': u.pppkParuh, 'Total ASN': u.total 
-    })));
+      'PNS': u.pns, 
+      'CPNS': u.cpns, 
+      'PPPK': u.pppk, 
+      'PPPK Paruh Waktu': u.pppkParuh, 
+      'Total ASN': u.total 
+    }));
+    const unitWs = safeJsonToSheet(unitRows);
+    autoFitColumns(unitWs, unitRows);
     XLSX.utils.book_append_sheet(wb, unitWs, "Sebaran Unit");
 
     // 2. Statistik Gender
-    const genderWs = safeJsonToSheet([
-        { 'Kategori': 'Laki-laki', 'Jumlah': genderStats.pria },
-        { 'Kategori': 'Perempuan', 'Jumlah': genderStats.wanita },
-        { 'Kategori': 'Total', 'Jumlah': genderStats.pria + genderStats.wanita }
-    ]);
+    const genderRows = [
+      { 'Kategori': 'Laki-laki', 'Jumlah': genderStats.pria },
+      { 'Kategori': 'Perempuan', 'Jumlah': genderStats.wanita },
+      { 'Kategori': 'Total', 'Jumlah': genderStats.pria + genderStats.wanita }
+    ];
+    const genderWs = safeJsonToSheet(genderRows);
+    autoFitColumns(genderWs, genderRows);
     XLSX.utils.book_append_sheet(wb, genderWs, "Statistik Gender");
 
     // 3. Statistik Pendidikan
-    const eduWs = safeJsonToSheet(educationStats.map(e => ({
-        'Jenjang Pendidikan': e.label,
-        'Jumlah ASN': e.count
-    })));
+    const eduRows = educationStats.map((e, i) => ({
+      'No': i + 1,
+      'Jenjang Pendidikan': e.label,
+      'Jumlah ASN': e.count
+    }));
+    const eduWs = safeJsonToSheet(eduRows);
+    autoFitColumns(eduWs, eduRows);
     XLSX.utils.book_append_sheet(wb, eduWs, "Statistik Pendidikan");
 
     // 4. Sebaran Golongan
-    const gradeWs = safeJsonToSheet(gradeStats.map(g => ({
-        'Golongan / Ruang': g.label,
-        'Jumlah ASN': g.count
-    })));
+    const gradeRows = gradeStats.map((g, i) => ({
+      'No': i + 1,
+      'Golongan / Ruang': g.label,
+      'Jumlah ASN': g.count
+    }));
+    const gradeWs = safeJsonToSheet(gradeRows);
+    autoFitColumns(gradeWs, gradeRows);
     XLSX.utils.book_append_sheet(wb, gradeWs, "Sebaran Golongan");
 
-    // 5. Matriks Jabatan (Summary)
-    const jabWs = safeJsonToSheet(matrixJabatan.map(j => ({
-        'Nama Jabatan': j.jabatan,
-        'Unit Kerja': j.unitKerja,
-        'Bagian': j.bagian,
-        'Klasifikasi': j.klasifikasi,
-        'Jenis Pegawai': j.jenis,
-        'Total ASN': j.total
-    })));
+    // 5. Matriks Nomenklatur Jabatan
+    const jabRows = matrixJabatan.map((j, i) => ({
+      'No': i + 1,
+      'Nama Nomenklatur Jabatan': j.jabatan,
+      'Klasifikasi': j.klasifikasi,
+      'Kelas Jabatan (Permen 38)': j.kelasJabatan,
+      'Jenis Pegawai': j.jenis,
+      'Unit Kerja': j.unitKerja,
+      'Bagian / Subdit': j.bagian,
+      'Total ASN': j.total
+    }));
+    const jabWs = safeJsonToSheet(jabRows);
+    autoFitColumns(jabWs, jabRows);
     XLSX.utils.book_append_sheet(wb, jabWs, "Matriks Jabatan");
 
-    safeWriteExcel(wb, `PortalSDM_Full_Analytics_${new Date().getTime()}.xlsx`);
+    // 6. Komposisi Usia & Generasi
+    const ageExportRows = ageStats.list.map((a, i) => ({
+      'No': i + 1,
+      'Kelompok Usia': a.label,
+      'Kategori Generasi': a.desc,
+      'Jumlah ASN': a.count,
+      'Persentase': ageStats.totalRecorded > 0 ? `${((a.count / ageStats.totalRecorded) * 100).toFixed(1)}%` : '0%'
+    }));
+    const ageWs = safeJsonToSheet(ageExportRows);
+    autoFitColumns(ageWs, ageExportRows);
+    XLSX.utils.book_append_sheet(wb, ageWs, "Komposisi Usia");
+
+    // 7. Perbandingan Struktural vs Non-Struktural
+    const structuralCount = classificationStats.jpt + classificationStats.struktural;
+    const nonStructuralCount = classificationStats.fungsional + classificationStats.pelaksana;
+    const totalCount = classificationStats.total || 1;
+    const clusterRows = [
+      { 
+        'No': 1, 
+        'Kategori': 'JABATAN STRUKTURAL (MANAJERIAL)', 
+        'Lingkup Jabatan': 'Jabatan Pimpinan Tinggi (JPT) + Administrator & Pengawas (Eselon III & IV)', 
+        'Jumlah Pemangku (Orang)': structuralCount, 
+        'Nomenklatur Unik': classificationStats.jptUnique + classificationStats.strukturalUnique, 
+        'Persentase': `${((structuralCount / totalCount) * 100).toFixed(1)}%` 
+      },
+      { 
+        'No': 2, 
+        'Kategori': 'JABATAN NON-STRUKTURAL', 
+        'Lingkup Jabatan': 'Jabatan Fungsional (JFT) + Pelaksana (Fungsional Umum)', 
+        'Jumlah Pemangku (Orang)': nonStructuralCount, 
+        'Nomenklatur Unik': classificationStats.fungsionalUnique + classificationStats.pelaksanaUnique, 
+        'Persentase': `${((nonStructuralCount / totalCount) * 100).toFixed(1)}%` 
+      },
+      { 
+        'No': 3, 
+        'Kategori': 'TOTAL KESELURUHAN', 
+        'Lingkup Jabatan': 'Seluruh ASN Aktif DJKI', 
+        'Jumlah Pemangku (Orang)': classificationStats.total, 
+        'Nomenklatur Unik': classificationStats.totalUnique, 
+        'Persentase': '100%' 
+      }
+    ];
+    const clusterWs = safeJsonToSheet(clusterRows);
+    autoFitColumns(clusterWs, clusterRows);
+    XLSX.utils.book_append_sheet(wb, clusterWs, "Struktural vs Non-Struktural");
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    safeWriteExcel(wb, `PortalSDM_Full_Analytics_${dateStr}.xlsx`);
     logActivity('DOWNLOAD', 'Dashboard', 'Download Full Analytics Statistics');
   };
 
   const handleExportJabatan = () => {
     const wb = XLSX.utils.book_new();
-    
-    // Apply Global Filters (Jenis & Search)
-    let listForExport = activePegawaiList;
-    if (filterJenisMatrix.length > 0) {
-        listForExport = listForExport.filter(p => {
-            const jen = (p.jenisPegawai || '').toUpperCase();
-            return filterJenisMatrix.some(f => {
-                if (f === 'PPPK_PARUH') return jen.includes('PARUH');
-                return jen === f;
-            });
+
+    // Helper for auto-adjusting column widths
+    const autoFitColumns = (ws: XLSX.WorkSheet, data: any[]) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => {
+        let maxLen = k.length;
+        data.forEach(row => {
+          const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
+          if (val.length > maxLen) maxLen = val.length;
         });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 55) };
+      });
+    };
+
+    // Filtered employees based on active selection (jenis & search)
+    let listFiltered = activePegawaiList;
+    if (filterJenisMatrix.length > 0) {
+      listFiltered = listFiltered.filter(p => {
+        const jen = (p.jenisPegawai || '').toUpperCase();
+        return filterJenisMatrix.some(f => {
+          if (f === 'PPPK_PARUH') return jen.includes('PARUH');
+          return jen === f;
+        });
+      });
     }
 
     const term = searchJabatan.toUpperCase().trim();
-    
-    // Process Data for ALL Units (for the Overall sheet)
-    const getGroupedDataInternal = (list: Pegawai[]) => {
-      const groups: Record<string, { total: number, jabatan: string, unitKerja: string, bagian: string, kelasJabatan: string, klasifikasi: string }> = {};
-      list.forEach(p => {
-        const jab = (p.jabatan || 'TANPA JABATAN').trim().toUpperCase();
-        const klas = getJabatanClassification(p);
-        
-        // Use the same refined logic as UI matrix
-        let isMatch = !term;
-        if (term) {
-           if (term === 'FUNGSIONAL' || term === 'PEJABAT FUNGSIONAL') {
-             isMatch = klas === 'FUNGSIONAL';
-           } else if (term === 'STRUKTURAL' || term === 'PEJABAT STRUKTURAL' || term === 'MANAJERIAL') {
-             isMatch = klas === 'STRUKTURAL';
-           } else if (term === 'JPT' || term === 'PIMPINAN TINGGI') {
-             isMatch = klas === 'JPT';
-           } else if (term === 'FUNGSIONAL UMUM' || term === 'PELAKSANA') {
-             isMatch = (jab.includes('FUNGSIONAL UMUM') || klas === 'PELAKSANA') && klas !== 'FUNGSIONAL';
-           } else {
-             isMatch = jab.includes(term) || klas.includes(term);
-           }
+    if (term) {
+      listFiltered = listFiltered.filter(p => {
+        const jab = (p.jabatan || 'TANPA JABATAN').toUpperCase().trim();
+        const klas = getJabatanClassification(p).toUpperCase();
+        if (term === 'FUNGSIONAL' || term === 'PEJABAT FUNGSIONAL') {
+          return klas === 'FUNGSIONAL';
         }
-
-        if (!isMatch) return;
-
-        const unit = normalizeUnitName(p.unitKerja);
-        const bagian = (p.bagian || '-').toUpperCase().trim();
-        const kelas = getKelasJabatan(p);
-        const key = `${jab}|${unit}|${bagian}|${kelas}|${klas}`;
-        
-        if (!groups[key]) {
-          groups[key] = { total: 0, jabatan: jab, unitKerja: unit, bagian: bagian, kelasJabatan: kelas, klasifikasi: klas };
+        if (term === 'STRUKTURAL' || term === 'PEJABAT STRUKTURAL' || term === 'MANAJERIAL') {
+          return klas === 'STRUKTURAL';
         }
-        groups[key].total += 1;
+        if (term === 'JPT' || term === 'PIMPINAN TINGGI') {
+          return klas === 'JPT';
+        }
+        if (term === 'FUNGSIONAL UMUM' || term === 'PELAKSANA') {
+          return (jab.includes('FUNGSIONAL UMUM') || klas === 'PELAKSANA') && klas !== 'FUNGSIONAL';
+        }
+        return jab.includes(term) || klas.includes(term);
       });
-      return Object.values(groups);
-    };
+    }
 
-    const allDataRaw = getGroupedDataInternal(listForExport);
+    // List filtered by unit (if filterUnit is not "Semua Unit")
+    const listUnitFiltered = filterUnit === 'Semua Unit' 
+      ? listFiltered 
+      : listFiltered.filter(p => normalizeUnitName(p.unitKerja) === filterUnit);
 
-    // 1. Keseluruhan Jabatan Sheet (Unique Names ONLY)
-    const uniqueJobsOverall: Record<string, { kelas: string, total: number }> = {};
-    allDataRaw.forEach(j => {
-      if (!uniqueJobsOverall[j.jabatan]) {
-        uniqueJobsOverall[j.jabatan] = { kelas: j.kelasJabatan, total: 0 };
+    // 1. SHEET 1: "Matriks Nomenklatur" (Persis seperti yang tampil di layar dashboard)
+    const matriksData = matrixJabatan.map((item, idx) => ({
+      'No': idx + 1,
+      'Nama Nomenklatur Jabatan': item.jabatan,
+      'Klasifikasi': item.klasifikasi,
+      'Jenis Pegawai': item.jenis,
+      'Kelas Jabatan (Permen 38)': item.kelasJabatan,
+      'Unit Kerja': item.unitKerja,
+      'Bagian / Subdit': item.bagian,
+      'Total ASN': item.total
+    }));
+    const wsMatriks = safeJsonToSheet(matriksData);
+    autoFitColumns(wsMatriks, matriksData);
+    XLSX.utils.book_append_sheet(wb, wsMatriks, "Matriks Nomenklatur");
+
+    // 2. SHEET 2: "Rekap Nomenklatur Unik" (Master Nomenklatur dengan breakdown PNS, CPNS, PPPK, Total)
+    const uniqueMap: Record<string, {
+      jabatan: string;
+      klasifikasi: string;
+      kelasJabatan: string;
+      pns: number;
+      cpns: number;
+      pppk: number;
+      pppkParuh: number;
+      total: number;
+      units: Set<string>;
+    }> = {};
+
+    listFiltered.forEach(p => {
+      const jab = (p.jabatan || 'TANPA JABATAN').trim().toUpperCase();
+      const klas = getJabatanClassification(p);
+      const kelas = getKelasJabatan(p);
+      const jen = (p.jenisPegawai || 'PNS').trim().toUpperCase();
+      const unit = normalizeUnitName(p.unitKerja);
+
+      if (!uniqueMap[jab]) {
+        uniqueMap[jab] = {
+          jabatan: jab,
+          klasifikasi: klas,
+          kelasJabatan: kelas,
+          pns: 0,
+          cpns: 0,
+          pppk: 0,
+          pppkParuh: 0,
+          total: 0,
+          units: new Set<string>()
+        };
       }
-      uniqueJobsOverall[j.jabatan].total += j.total;
+      if (jen === 'PNS') uniqueMap[jab].pns++;
+      else if (jen.includes('CPNS')) uniqueMap[jab].cpns++;
+      else if (jen.includes('PARUH')) uniqueMap[jab].pppkParuh++;
+      else if (jen.includes('PPPK')) uniqueMap[jab].pppk++;
+      else uniqueMap[jab].pns++;
+
+      uniqueMap[jab].total++;
+      if (unit && unit !== '-') uniqueMap[jab].units.add(unit);
     });
 
-    const overallData = Object.entries(uniqueJobsOverall)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([jab, data], i) => ({
-        'No': i + 1,
-        'Nama Jabatan': jab,
-        'Kelas Jabatan': data.kelas,
-        'Total Pegawai': data.total
+    const uniqueNomenklaturList = Object.values(uniqueMap)
+      .sort((a, b) => b.total - a.total || a.jabatan.localeCompare(b.jabatan))
+      .map((item, idx) => ({
+        'No': idx + 1,
+        'Nama Nomenklatur Jabatan': item.jabatan,
+        'Klasifikasi Jabatan': item.klasifikasi,
+        'Kelas Jabatan (Permen 38)': item.kelasJabatan,
+        'PNS': item.pns,
+        'CPNS': item.cpns,
+        'PPPK': item.pppk,
+        'PPPK Paruh Waktu': item.pppkParuh,
+        'Total Pemangku ASN': item.total,
+        'Sebaran Unit Kerja': Array.from(item.units).join('; ') || 'DJKI'
       }));
+    const wsUnique = safeJsonToSheet(uniqueNomenklaturList);
+    autoFitColumns(wsUnique, uniqueNomenklaturList);
+    XLSX.utils.book_append_sheet(wb, wsUnique, "Rekap Nomenklatur Unik");
 
-    const wsAll = safeJsonToSheet(overallData);
-    XLSX.utils.book_append_sheet(wb, wsAll, "Keseluruhan Jabatan");
+    // 3. SHEET 3: "Daftar Nominatif Pegawai" (Rincian nama-nama pegawai pemangku)
+    const nominatifData = listUnitFiltered
+      .sort((a, b) => (a.jabatan || '').localeCompare(b.jabatan || '') || (a.nama || '').localeCompare(b.nama || ''))
+      .map((p, idx) => ({
+        'No': idx + 1,
+        'NIP': p.nip || '-',
+        'Nama Pegawai': formatPegawaiName(p.nama),
+        'Nomenklatur Jabatan': (p.jabatan || '-').trim().toUpperCase(),
+        'Klasifikasi': getJabatanClassification(p),
+        'Kelas Jabatan': getKelasJabatan(p),
+        'Jenis Pegawai': (p.jenisPegawai || 'ASN').trim().toUpperCase(),
+        'Gol / Ruang': p.golRuang || '-',
+        'Pendidikan': p.pendidikan || '-',
+        'Unit Kerja': normalizeUnitName(p.unitKerja),
+        'Bagian / Subdit / Tim': p.bagian || '-',
+        'Status': p.status || 'Aktif'
+      }));
+    const wsNominatif = safeJsonToSheet(nominatifData);
+    autoFitColumns(wsNominatif, nominatifData);
+    XLSX.utils.book_append_sheet(wb, wsNominatif, "Daftar Nominatif Pegawai");
 
-    // 2. Per-Unit Sheets
-    // Respect the filterUnit if it's not "Semua Unit" for selection, but we often want all units in Excel
+    // 4. SHEET 4+: Per-Unit Sheets (DIT / SET)
     const unitsToExport = filterUnit === 'Semua Unit' ? UNIT_KERJA : [filterUnit];
-    
     unitsToExport.forEach(unitName => {
-      const unitGroups = allDataRaw.filter(j => j.unitKerja === unitName);
-      if (unitGroups.length > 0) {
-        const unitData = unitGroups
-          .sort((a, b) => a.jabatan.localeCompare(b.jabatan))
-          .map((j, i) => ({
-            'No': i + 1,
-            'Nama Jabatan': j.jabatan,
-            'Kelas Jabatan': j.kelasJabatan,
-            'Bagian': j.bagian,
-            'Total Pegawai': j.total
+      const perUnitList = listFiltered.filter(p => normalizeUnitName(p.unitKerja) === unitName);
+      if (perUnitList.length > 0) {
+        // Group by (jabatan, bagian, klasifikasi, kelasJabatan)
+        const unitGroups: Record<string, {
+          jabatan: string;
+          bagian: string;
+          klasifikasi: string;
+          kelasJabatan: string;
+          pns: number;
+          cpns: number;
+          pppk: number;
+          pppkParuh: number;
+          total: number;
+        }> = {};
+
+        perUnitList.forEach(p => {
+          const jab = (p.jabatan || 'TANPA JABATAN').trim().toUpperCase();
+          const bag = (p.bagian || '-').trim().toUpperCase();
+          const klas = getJabatanClassification(p);
+          const kelas = getKelasJabatan(p);
+          const jen = (p.jenisPegawai || 'PNS').trim().toUpperCase();
+          const key = `${jab}|${bag}|${klas}|${kelas}`;
+
+          if (!unitGroups[key]) {
+            unitGroups[key] = {
+              jabatan: jab,
+              bagian: bag,
+              klasifikasi: klas,
+              kelasJabatan: kelas,
+              pns: 0,
+              cpns: 0,
+              pppk: 0,
+              pppkParuh: 0,
+              total: 0
+            };
+          }
+          if (jen === 'PNS') unitGroups[key].pns++;
+          else if (jen.includes('CPNS')) unitGroups[key].cpns++;
+          else if (jen.includes('PARUH')) unitGroups[key].pppkParuh++;
+          else if (jen.includes('PPPK')) unitGroups[key].pppk++;
+          else unitGroups[key].pns++;
+
+          unitGroups[key].total++;
+        });
+
+        const unitRows = Object.values(unitGroups)
+          .sort((a, b) => b.total - a.total || a.jabatan.localeCompare(b.jabatan))
+          .map((item, idx) => ({
+            'No': idx + 1,
+            'Nama Nomenklatur Jabatan': item.jabatan,
+            'Klasifikasi': item.klasifikasi,
+            'Kelas Jabatan': item.kelasJabatan,
+            'Bagian / Subdit / Tim': item.bagian,
+            'PNS': item.pns,
+            'CPNS': item.cpns,
+            'PPPK': item.pppk,
+            'PPPK Paruh Waktu': item.pppkParuh,
+            'Total ASN': item.total
           }));
-        
-        const wsUnit = safeJsonToSheet(unitData);
-        const safeName = unitName.replace('Direktorat ', 'DIT ').replace('Sekretariat ', 'SET ').substring(0, 31);
+
+        const wsUnit = safeJsonToSheet(unitRows);
+        autoFitColumns(wsUnit, unitRows);
+        const safeName = unitName
+          .replace('Direktorat ', 'DIT ')
+          .replace('Sekretariat ', 'SET ')
+          .replace(/[^A-Za-z0-9 ]/g, '')
+          .substring(0, 31);
         XLSX.utils.book_append_sheet(wb, wsUnit, safeName);
       }
     });
 
-    safeWriteExcel(wb, `Nomenklatur_Jabatan_DJKI_${new Date().getTime()}.xlsx`);
-    logActivity('DOWNLOAD', 'Dashboard', 'Download Matriks Jabatan Lengkap (Excel Export)');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const unitTag = filterUnit !== 'Semua Unit' ? `_${filterUnit.replace(/[^A-Za-z0-9]/g, '_').substring(0, 15)}` : '';
+    safeWriteExcel(wb, `Nomenklatur_Jabatan_DJKI${unitTag}_${dateStr}.xlsx`);
+    logActivity('DOWNLOAD', 'Dashboard', 'Download Matriks Nomenklatur Jabatan Lengkap (Excel Export)');
   };
 
   const isViewerRole = !canEdit || isOnlyAdminUangMakan;
@@ -799,6 +1132,14 @@ const Dashboard = () => {
           >
             <i className="bi bi-headset text-base md:text-lg"></i>
             <span>Layanan SDM</span>
+          </button>
+          <button 
+            onClick={() => navigate('/pegawai', { state: { viewMode: 'struktur' } })}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 bg-indigo-600 hover:bg-indigo-700 p-3 md:p-4 px-4 md:px-6 rounded-xl md:rounded-2xl text-white text-[9px] md:text-[10px] font-black tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+            title="Buka Bagan Struktur Organisasi SOTK DJKI"
+          >
+            <i className="bi bi-diagram-3-fill text-base md:text-lg"></i>
+            <span>Bagan SOTK</span>
           </button>
           <button 
             onClick={() => {
@@ -1120,6 +1461,50 @@ const Dashboard = () => {
               Download Rekap
             </button>
          </div>
+
+         {/* Perbandingan Struktural vs Non-Struktural */}
+         <div className="mb-6 p-4 md:p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-2xl md:rounded-3xl text-white relative z-10 shadow-lg border border-indigo-900/40">
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+             <div>
+               <span className="text-[7px] md:text-[8px] font-black text-indigo-400 uppercase tracking-[0.25em] flex items-center gap-1.5 mb-1">
+                 <i className="bi bi-pie-chart-fill"></i>
+                 Perbandingan Komposisi Jabatan ASN
+               </span>
+               <h5 className="text-sm md:text-base font-black tracking-tight text-white">
+                 Struktural (Manajerial) vs Non-Struktural (Fungsional & Pelaksana)
+               </h5>
+             </div>
+             <div className="flex flex-wrap items-center gap-4 text-xs font-black">
+               <div className="flex items-center gap-2">
+                 <span className="w-3 h-3 rounded-md bg-indigo-500 inline-block shadow-sm"></span>
+                 <span className="text-[10px] text-indigo-200">Struktural: <b className="text-white text-xs">{classificationStats.jpt + classificationStats.struktural}</b> ({(( (classificationStats.jpt + classificationStats.struktural) / (classificationStats.total || 1) ) * 100).toFixed(1)}%)</span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="w-3 h-3 rounded-md bg-emerald-400 inline-block shadow-sm"></span>
+                 <span className="text-[10px] text-emerald-200">Non-Struktural: <b className="text-white text-xs">{classificationStats.fungsional + classificationStats.pelaksana}</b> ({(( (classificationStats.fungsional + classificationStats.pelaksana) / (classificationStats.total || 1) ) * 100).toFixed(1)}%)</span>
+               </div>
+             </div>
+           </div>
+
+           {/* Visual ratio bar */}
+           <div className="w-full h-3 md:h-4 bg-slate-800 rounded-full overflow-hidden flex shadow-inner p-0.5">
+             <div 
+               style={{ width: `${(( (classificationStats.jpt + classificationStats.struktural) / (classificationStats.total || 1) ) * 100).toFixed(1)}%` }} 
+               className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-l-full transition-all duration-500 relative cursor-pointer"
+               title={`Struktural: ${classificationStats.jpt + classificationStats.struktural} ASN`}
+             ></div>
+             <div 
+               style={{ width: `${(( (classificationStats.fungsional + classificationStats.pelaksana) / (classificationStats.total || 1) ) * 100).toFixed(1)}%` }} 
+               className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-r-full transition-all duration-500 relative cursor-pointer"
+               title={`Non-Struktural: ${classificationStats.fungsional + classificationStats.pelaksana} ASN`}
+             ></div>
+           </div>
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-[8px] md:text-[9px] font-bold text-slate-400 mt-2 px-1 gap-1">
+             <span>JPT Pratama & Eselon III / IV: {classificationStats.jpt + classificationStats.struktural} ASN ({classificationStats.jptUnique + classificationStats.strukturalUnique} Jabatan Unik)</span>
+             <span>Fungsional & Pelaksana: {classificationStats.fungsional + classificationStats.pelaksana} ASN ({classificationStats.fungsionalUnique + classificationStats.pelaksanaUnique} Jabatan Unik)</span>
+           </div>
+         </div>
+
          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 relative z-10">
             <div 
                onClick={() => {
@@ -1427,6 +1812,65 @@ const Dashboard = () => {
                         ))}
                     </tbody>
                 </table>
+              </div>
+           </div>
+
+           {/* STATISTIK KOMPOSISI USIA & GENERASI ASN */}
+           <div className="bg-white p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                 <div>
+                    <h4 className="text-[10px] md:text-[12px] font-black text-gray-950 tracking-[0.2em] md:tracking-[0.3em] uppercase flex items-center gap-2">
+                       <i className="bi bi-person-bounding-box text-blue-600"></i>
+                       Komposisi Usia & Generasi ASN
+                    </h4>
+                    <p className="text-[7px] md:text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                       Dihitung dari NIP / Tanggal Lahir ({ageStats.totalRecorded} ASN Terdata)
+                    </p>
+                 </div>
+                 <select 
+                    className="w-full sm:w-auto px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[9px] font-black outline-none focus:border-blue-600 transition-all cursor-pointer" 
+                    value={filterJenisAge} 
+                    onChange={e => setFilterJenisAge(e.target.value)}
+                 >
+                    <option value="Semua Jenis">Semua Jenis</option>
+                    <option value="PNS">PNS</option>
+                    <option value="CPNS">CPNS</option>
+                    <option value="PPPK">PPPK</option>
+                 </select>
+              </div>
+
+              <div className="space-y-3.5">
+                 {ageStats.list.map((item, idx) => {
+                    const percentage = ageStats.totalRecorded > 0 ? ((item.count / ageStats.totalRecorded) * 100).toFixed(1) : '0';
+                    return (
+                       <div key={idx} className="p-3 md:p-4 bg-gray-50 rounded-2xl hover:bg-blue-50/40 transition-all border border-gray-100/60">
+                          <div className="flex justify-between items-center mb-1.5">
+                             <div>
+                                <span className={`text-[10px] md:text-[11px] font-black uppercase ${item.color}`}>
+                                   {item.label}
+                                </span>
+                                <span className="text-[8px] md:text-[9px] font-semibold text-gray-500 ml-2">
+                                   ({item.desc})
+                                </span>
+                             </div>
+                             <div className="text-right">
+                                <span className="text-[11px] md:text-[13px] font-black text-gray-950 mr-1.5">
+                                   {item.count} ASN
+                                </span>
+                                <span className="text-[8px] md:text-[9px] font-bold text-gray-500">
+                                   ({percentage}%)
+                                </span>
+                             </div>
+                          </div>
+                          <div className="w-full bg-gray-200 h-2 md:h-2.5 rounded-full overflow-hidden">
+                             <div 
+                                className={`h-full rounded-full transition-all duration-500 ${item.bgLight}`}
+                                style={{ width: `${percentage}%` }}
+                             ></div>
+                          </div>
+                       </div>
+                    );
+                 })}
               </div>
            </div>
         </div>

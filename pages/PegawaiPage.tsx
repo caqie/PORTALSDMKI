@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Pegawai, Dossier } from '../types';
 import { fetchPegawaiFromSheets, savePegawai, syncTableRemote, fetchDossiersFromSheets, uploadFileToDrive, findPegawaiByNip, parseDateToYYYYMMDD } from '../spreadsheetService';
 import { useAuth } from '../AuthContext';
@@ -85,9 +85,18 @@ const PegawaiPage = () => {
     level: string;
     targetNips: Set<string>;
   } | null>(null);
+  const location = useLocation();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'struktur'>(() => {
-    return (sessionStorage.getItem('pegawai_viewMode') as 'grid' | 'list' | 'struktur') || 'grid';
+    return (location.state?.viewMode as 'grid' | 'list' | 'struktur') || 
+           (sessionStorage.getItem('pegawai_viewMode') as 'grid' | 'list' | 'struktur') || 
+           'grid';
   });
+
+  useEffect(() => {
+    if (location.state?.viewMode) {
+      setViewMode(location.state.viewMode);
+    }
+  }, [location.state?.viewMode]);
 
   // Persist filters and scroll to sessionStorage
   useEffect(() => {
@@ -2879,6 +2888,20 @@ const PegawaiPage = () => {
         </div>
 
         <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+          {viewMode === 'struktur' && (
+            <button 
+              type="button"
+              onClick={() => {
+                const btn = document.querySelector<HTMLButtonElement>('[title*="Unduh seluruh struktur hierarki SOTK DJKI"]');
+                if (btn) btn.click();
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[8px] md:text-[9px] font-black uppercase shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-fadeIn"
+              title="Unduh Bagan Struktur Organisasi SOTK DJKI ke Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill text-xs"></i>
+              <span>Unduh Excel SOTK</span>
+            </button>
+          )}
           <button 
             type="button"
             onClick={() => {
