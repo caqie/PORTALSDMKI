@@ -315,10 +315,50 @@ export const GELAR_MAP: Record<string, { bidang: string, jenjang: string }> = {
   'PK': { bidang: 'Rekam Medis', jenjang: 'DIII' },
   'A.Md.': { bidang: 'Ahli Madya', jenjang: 'DIII' },
   'Amd.': { bidang: 'Ahli Madya', jenjang: 'DIII' },
-  'Ir.': { bidang: 'Insinyur', jenjang: 'PROFESI' },
-  'Apt.': { bidang: 'Apoteker', jenjang: 'PROFESI' },
-  'dr.': { bidang: 'Dokter', jenjang: 'PROFESI' },
-  'drg.': { bidang: 'Dokter Gigi', jenjang: 'PROFESI' },
+  'Ir.': { bidang: 'Insinyur', jenjang: 'S1' },
+  'Apt.': { bidang: 'Apoteker', jenjang: 'S1' },
+  'dr.': { bidang: 'Kedokteran (Dokter)', jenjang: 'S1' },
+  'drg.': { bidang: 'Kedokteran Gigi (Dokter Gigi)', jenjang: 'S1' },
+  'drh.': { bidang: 'Kedokteran Hewan (Dokter Hewan)', jenjang: 'S1' },
+  'S.Ked': { bidang: 'Kedokteran', jenjang: 'S1' },
+  'S.Ked.': { bidang: 'Kedokteran', jenjang: 'S1' },
+  'SKed': { bidang: 'Kedokteran', jenjang: 'S1' },
+  'S.KG': { bidang: 'Kedokteran Gigi', jenjang: 'S1' },
+  'S.KH': { bidang: 'Kedokteran Hewan', jenjang: 'S1' },
+  'S.Kep': { bidang: 'Keperawatan', jenjang: 'S1' },
+  'S.Kep.': { bidang: 'Keperawatan', jenjang: 'S1' },
+  'S.Keb': { bidang: 'Kebidanan', jenjang: 'S1' },
+  'S.Gz': { bidang: 'Ilmu Gizi', jenjang: 'S1' },
+  'S.KM': { bidang: 'Kesehatan Masyarakat', jenjang: 'S1' },
+  'S.KM.': { bidang: 'Kesehatan Masyarakat', jenjang: 'S1' },
+  'SKM': { bidang: 'Kesehatan Masyarakat', jenjang: 'S1' },
+  'S.Kes': { bidang: 'Kesehatan', jenjang: 'S1' },
+  'S.Psi': { bidang: 'Psikologi', jenjang: 'S1' },
+  'S.M': { bidang: 'Manajemen', jenjang: 'S1' },
+  'S.Ak': { bidang: 'Akuntansi', jenjang: 'S1' },
+  'S.STP': { bidang: 'Ilmu Pemerintahan (IPDN)', jenjang: 'S1' },
+  'S.Bns': { bidang: 'Bisnis', jenjang: 'S1' },
+  'S.H.I.': { bidang: 'Hukum Islam', jenjang: 'S1' },
+  'S.Pd.I.': { bidang: 'Pendidikan Agama Islam', jenjang: 'S1' },
+  'S.Inf.': { bidang: 'Informatika', jenjang: 'S1' },
+  'S.TI.': { bidang: 'Teknologi Informasi', jenjang: 'S1' },
+  'Sp.A': { bidang: 'Spesialis Anak', jenjang: 'S2' },
+  'Sp.PD': { bidang: 'Spesialis Penyakit Dalam', jenjang: 'S2' },
+  'Sp.B': { bidang: 'Spesialis Bedah', jenjang: 'S2' },
+  'Sp.OG': { bidang: 'Spesialis Kebidanan & Kandungan', jenjang: 'S2' },
+  'Sp.M': { bidang: 'Spesialis Mata', jenjang: 'S2' },
+  'Sp.THT': { bidang: 'Spesialis THT', jenjang: 'S2' },
+  'Sp.KJ': { bidang: 'Spesialis Kedokteran Jiwa', jenjang: 'S2' },
+  'Sp.S': { bidang: 'Spesialis Saraf', jenjang: 'S2' },
+  'Sp.Rad': { bidang: 'Spesialis Radiologi', jenjang: 'S2' },
+  'Sp.An': { bidang: 'Spesialis Anestesi', jenjang: 'S2' },
+  'Sp.KK': { bidang: 'Spesialis Kulit & Kelamin', jenjang: 'S2' },
+  'Sp.PK': { bidang: 'Spesialis Patologi Klinik', jenjang: 'S2' },
+  'Sp.PA': { bidang: 'Spesialis Patologi Anatomi', jenjang: 'S2' },
+  'Sp.JP': { bidang: 'Spesialis Jantung', jenjang: 'S2' },
+  'Sp.OT': { bidang: 'Spesialis Orthopaedi', jenjang: 'S2' },
+  'Sp.U': { bidang: 'Spesialis Urologi', jenjang: 'S2' },
+  'Sp.': { bidang: 'Spesialis Kedokteran', jenjang: 'S2' },
   'Bc.IP': { bidang: 'Pemasyarakatan (Kedinasan)', jenjang: 'DIV' },
   'Prof.': { bidang: 'Profesor', jenjang: 'GELAR_KEHORMATAN' },
   'H.': { bidang: 'Haji', jenjang: 'GELAR_KEAGAMAAN' },
@@ -332,7 +372,15 @@ export const GELAR_MAP: Record<string, { bidang: string, jenjang: string }> = {
 export const resolveUserPendidikan = (nama: string): { pendidikan: string; jurusan: string } | null => {
   if (!nama) return null;
 
-  let txt = String(nama).toUpperCase();
+  const rawStr = String(nama).trim();
+
+  // Distinguish lowercase "dr." (Dokter Medik - S1 Kedokteran) from capital "Dr." (Doktor - S3)
+  const isMedDoctor = /(^|\s|,\s*)dr\.\s+/i.test(rawStr) && /(^|\s|,\s*)dr\.\s+/.test(rawStr);
+  const isDentist = /(^|\s|,\s*)drg\.\s+/i.test(rawStr);
+  const isVet = /(^|\s|,\s*)drh\.\s+/i.test(rawStr);
+  const isDoktorS3 = /(^|\s)(Prof\.?\s+)?Dr\.\s+/.test(rawStr) || /\b(DOKTOR|PHD|DPHIL)\b/i.test(rawStr);
+
+  let txt = rawStr.toUpperCase();
 
   // rapikan tanda baca
   txt = txt
@@ -343,9 +391,27 @@ export const resolveUserPendidikan = (nama: string): { pendidikan: string; jurus
 
   const gelarMap: Record<string, string> = {
     // ===== S3 =====
-    "DR": "S3|Doktor",
+    ...(isDoktorS3 ? { "DR": "S3|Doktor" } : {}),
     "PHD": "S3|Doktor",
     "DPHIL": "S3|Doktor",
+
+    // ===== Spesialis Kedokteran (Setara S2) =====
+    "SPA": "S2|Spesialis Anak",
+    "SPPD": "S2|Spesialis Penyakit Dalam",
+    "SPB": "S2|Spesialis Bedah",
+    "SPOG": "S2|Spesialis Obstetri & Ginekologi",
+    "SPM": "S2|Spesialis Mata",
+    "SPTHT": "S2|Spesialis THT",
+    "SPKJ": "S2|Spesialis Kedokteran Jiwa",
+    "SPS": "S2|Spesialis Saraf",
+    "SPRAD": "S2|Spesialis Radiologi",
+    "SPAN": "S2|Spesialis Anestesi",
+    "SPKK": "S2|Spesialis Kulit & Kelamin",
+    "SPPK": "S2|Spesialis Patologi Klinik",
+    "SPPA": "S2|Spesialis Patologi Anatomi",
+    "SPJP": "S2|Spesialis Jantung",
+    "SPOT": "S2|Spesialis Orthopaedi",
+    "SPU": "S2|Spesialis Urologi",
 
     // ===== S2 =====
     "MH": "S2|Hukum",
@@ -371,32 +437,60 @@ export const resolveUserPendidikan = (nama: string): { pendidikan: string; jurus
     "MAK": "S2|Akuntansi",
     "MIPL": "S2|Kekayaan Intelektual",
     "MIP": "S2|Kekayaan Intelektual",
+    "MKES": "S2|Kesehatan",
+    "MPH": "S2|Kesehatan Masyarakat",
 
-    // ===== S1 =====
+    // ===== S1 & Profesi Kedokteran / Kesehatan (S1) =====
+    "SKED": "S1|Kedokteran",
+    "DOKTER": "S1|Kedokteran",
+    "SKG": "S1|Kedokteran Gigi",
+    "DRG": "S1|Kedokteran Gigi",
+    "SKH": "S1|Kedokteran Hewan",
+    "DRH": "S1|Kedokteran Hewan",
+    "SKEP": "S1|Keperawatan",
+    "NS": "S1|Keperawatan",
+    "SKEB": "S1|Kebidanan",
+    "SKES": "S1|Kesehatan",
+    "SGZ": "S1|Ilmu Gizi",
+    "SKM": "S1|Kesehatan Masyarakat",
+    "SFARM": "S1|Farmasi",
+    "APT": "S1|Farmasi",
+    "SPSI": "S1|Psikologi",
+
+    // ===== S1 Umum =====
     "SH": "S1|Hukum",
     "ST": "S1|Teknik",
     "STP": "S1|Teknologi Pertanian",
     "SKOM": "S1|Ilmu Komputer",
+    "SINF": "S1|Informatika",
+    "STI": "S1|Teknologi Informasi",
     "SSI": "S1|Sains",
     "SE": "S1|Ekonomi",
+    "SM": "S1|Manajemen",
+    "SBNS": "S1|Bisnis",
     "SSOS": "S1|Ilmu Sosial",
+    "SSOSIO": "S1|Sosiologi",
     "SIP": "S1|Ilmu Pemerintahan",
+    "SSTP": "S1|Ilmu Pemerintahan (IPDN)",
     "SIKOM": "S1|Ilmu Komunikasi",
-    "SFARM": "S1|Farmasi",
     "SP": "S1|Pertanian",
     "SPI": "S1|Perikanan",
     "SPD": "S1|Pendidikan",
+    "SPDI": "S1|Pendidikan Agama Islam",
     "SHUM": "S1|Humaniora",
     "SS": "S1|Sastra",
     "SDS": "S1|Desain",
     "SSN": "S1|Seni",
     "SAK": "S1|Akuntansi",
+    "SAKUN": "S1|Akuntansi",
     "SAP": "S1|Administrasi Publik",
+    "SAB": "S1|Administrasi Bisnis",
     "STAT": "S1|Statistika",
     "SARS": "S1|Arsitektur",
-    "SKM": "S1|Kesehatan Masyarakat",
     "SIK": "S1|Kepolisian",
     "SAG": "S1|Agama",
+    "SHI": "S1|Hukum Islam",
+    "SSY": "S1|Hukum Syariah",
     "SLING": "S1|Linguistik",
     "SHUBINT": "S1|Hubungan Internasional",
 
@@ -433,8 +527,19 @@ export const resolveUserPendidikan = (nama: string): { pendidikan: string; jurus
     }
   }
 
+  // Handle case-sensitive medical prefix if no other higher academic degree matched
+  if (isMedDoctor && !found.some(f => f.nilai.startsWith('S3|') || f.nilai.startsWith('S2|'))) {
+    return { pendidikan: "S1", jurusan: "Kedokteran" };
+  }
+  if (isDentist && !found.some(f => f.nilai.startsWith('S3|') || f.nilai.startsWith('S2|'))) {
+    return { pendidikan: "S1", jurusan: "Kedokteran Gigi" };
+  }
+  if (isVet && !found.some(f => f.nilai.startsWith('S3|') || f.nilai.startsWith('S2|'))) {
+    return { pendidikan: "S1", jurusan: "Kedokteran Hewan" };
+  }
+
   if (found.length === 0) {
-    return { pendidikan: "SMA/SMU/SMK", jurusan: "" };
+    return null;
   }
 
   const hasil = found[found.length - 1].nilai.split("|");
@@ -472,32 +577,66 @@ export const DEGREE_MAP_DATA: Record<string, { jenjang: string; jurusan: string;
   "MIP": { jenjang: "S2", jurusan: "Ilmu Pemerintahan", weight: 80 },
   "MP": { jenjang: "S2", jurusan: "Pertanian", weight: 80 },
 
-  // Profesi
+  // Spesialis Kedokteran (Setara S2)
+  "SPA": { jenjang: "S2", jurusan: "Spesialis Anak", weight: 80 },
+  "SPPD": { jenjang: "S2", jurusan: "Spesialis Penyakit Dalam", weight: 80 },
+  "SPB": { jenjang: "S2", jurusan: "Spesialis Bedah", weight: 80 },
+  "SPOG": { jenjang: "S2", jurusan: "Spesialis Kebidanan & Kandungan", weight: 80 },
+  "SPM": { jenjang: "S2", jurusan: "Spesialis Mata", weight: 80 },
+  "SPTHT": { jenjang: "S2", jurusan: "Spesialis THT", weight: 80 },
+  "SPKJ": { jenjang: "S2", jurusan: "Spesialis Kedokteran Jiwa", weight: 80 },
+  "SPS": { jenjang: "S2", jurusan: "Spesialis Saraf", weight: 80 },
+  "SPRAD": { jenjang: "S2", jurusan: "Spesialis Radiologi", weight: 80 },
+  "SPAN": { jenjang: "S2", jurusan: "Spesialis Anestesi", weight: 80 },
+  "SPKK": { jenjang: "S2", jurusan: "Spesialis Kulit & Kelamin", weight: 80 },
+  "SPPK": { jenjang: "S2", jurusan: "Spesialis Patologi Klinik", weight: 80 },
+  "SPPA": { jenjang: "S2", jurusan: "Spesialis Patologi Anatomi", weight: 80 },
+  "SPJP": { jenjang: "S2", jurusan: "Spesialis Jantung", weight: 80 },
+  "SPOT": { jenjang: "S2", jurusan: "Spesialis Orthopaedi", weight: 80 },
+  "SPU": { jenjang: "S2", jurusan: "Spesialis Urologi", weight: 80 },
+
+  // Profesi & Kedokteran (S1)
   "APT": { jenjang: "S1", jurusan: "Farmasi / Apoteker", weight: 75 },
   "NS": { jenjang: "S1", jurusan: "Keperawatan", weight: 75 },
   "DRG": { jenjang: "S1", jurusan: "Kedokteran Gigi", weight: 75 },
+  "DRH": { jenjang: "S1", jurusan: "Kedokteran Hewan", weight: 75 },
   "DOKTER": { jenjang: "S1", jurusan: "Kedokteran", weight: 75 },
+  "KEDOKTERAN": { jenjang: "S1", jurusan: "Kedokteran", weight: 75 },
+  "SKED": { jenjang: "S1", jurusan: "Kedokteran", weight: 70 },
+  "SKG": { jenjang: "S1", jurusan: "Kedokteran Gigi", weight: 70 },
+  "SKH": { jenjang: "S1", jurusan: "Kedokteran Hewan", weight: 70 },
+  "SKEP": { jenjang: "S1", jurusan: "Keperawatan", weight: 70 },
+  "SKEB": { jenjang: "S1", jurusan: "Kebidanan", weight: 70 },
+  "SKES": { jenjang: "S1", jurusan: "Kesehatan", weight: 70 },
+  "SGZ": { jenjang: "S1", jurusan: "Ilmu Gizi", weight: 70 },
 
-  // S1
+  // S1 Umum
   "SH": { jenjang: "S1", jurusan: "Ilmu Hukum", weight: 70 },
   "ST": { jenjang: "S1", jurusan: "Teknik", weight: 70 },
   "STP": { jenjang: "S1", jurusan: "Teknologi Pertanian", weight: 70 },
   "SKOM": { jenjang: "S1", jurusan: "Ilmu Komputer", weight: 70 },
+  "SINF": { jenjang: "S1", jurusan: "Informatika", weight: 70 },
+  "STI": { jenjang: "S1", jurusan: "Teknologi Informasi", weight: 70 },
   "SSI": { jenjang: "S1", jurusan: "Sains", weight: 70 },
   "SE": { jenjang: "S1", jurusan: "Ekonomi", weight: 70 },
   "SSOS": { jenjang: "S1", jurusan: "Ilmu Sosial", weight: 70 },
+  "SSOSIO": { jenjang: "S1", jurusan: "Sosiologi", weight: 70 },
   "SIP": { jenjang: "S1", jurusan: "Ilmu Pemerintahan", weight: 70 },
+  "SSTP": { jenjang: "S1", jurusan: "Ilmu Pemerintahan (IPDN)", weight: 70 },
   "SIKOM": { jenjang: "S1", jurusan: "Ilmu Komunikasi", weight: 70 },
   "SFARM": { jenjang: "S1", jurusan: "Farmasi", weight: 70 },
   "SP": { jenjang: "S1", jurusan: "Pertanian", weight: 70 },
   "SPI": { jenjang: "S1", jurusan: "Perikanan", weight: 70 },
   "SPD": { jenjang: "S1", jurusan: "Pendidikan", weight: 70 },
+  "SPDI": { jenjang: "S1", jurusan: "Pendidikan Agama Islam", weight: 70 },
   "SHUM": { jenjang: "S1", jurusan: "Humaniora", weight: 70 },
   "SS": { jenjang: "S1", jurusan: "Sastra", weight: 70 },
   "SDS": { jenjang: "S1", jurusan: "Desain", weight: 70 },
   "SSN": { jenjang: "S1", jurusan: "Seni", weight: 70 },
   "SAK": { jenjang: "S1", jurusan: "Akuntansi", weight: 70 },
+  "SAKUN": { jenjang: "S1", jurusan: "Akuntansi", weight: 70 },
   "SAP": { jenjang: "S1", jurusan: "Administrasi Publik", weight: 70 },
+  "SAB": { jenjang: "S1", jurusan: "Administrasi Bisnis", weight: 70 },
   "STAT": { jenjang: "S1", jurusan: "Statistika", weight: 70 },
   "SARS": { jenjang: "S1", jurusan: "Arsitektur", weight: 70 },
   "SKM": { jenjang: "S1", jurusan: "Kesehatan Masyarakat", weight: 70 },
@@ -570,11 +709,31 @@ export const normalizeStandardJenjang = (val?: any): StandardJenjang | string =>
   // Multi-degree combined forms (e.g. D4/S1, S1/D4) - normalize to S1 by default
   if (s.includes('D4S1') || s.includes('S1D4')) return 'S1';
 
+  // Medical Doctor (dr.), Dentist (drg.), Vet (drh.), Kedokteran, Profesi Dokter -> S1
+  const isLowerDr = /^dr\.?(\s|$)/.test(raw) || /^drg\.?(\s|$)/i.test(raw) || /^drh\.?(\s|$)/i.test(raw);
+  const isMedicalDoctor = 
+    isLowerDr || 
+    s.includes('KEDOKTERAN') || 
+    (s.includes('DOKTER') && !s.includes('DOKTOR') && !s.includes('DOCTOR')) ||
+    s === 'DRG' || s === 'DRH' || s === 'SKED' || s === 'SKG' || s === 'SKH' ||
+    s === 'SKEP' || s === 'SKEB' || s === 'SKES' || s === 'SGZ';
+
+  // Medical Specialist (Sp.1 is S2, Sp.2/Subspesialis is S3)
+  if (s.includes('SUBSPESIALIS') || s.includes('SP2')) {
+    return 'S3';
+  }
+  if (s.includes('SPESIALIS') || s.includes('SP1')) {
+    return 'S2';
+  }
+  if (isMedicalDoctor) {
+    return 'S1';
+  }
+
   // S3 / Doktor
   if (
     s === 'S3' || s.startsWith('S3') || s.startsWith('STRATA3') || s.startsWith('STRATAIII') ||
     s.includes('DOKTOR') || s.includes('DOCTOR') || s.includes('PHD') || s.includes('DPHIL') ||
-    s.includes('SUBSPESIALIS') || s.includes('SP2') || s === 'DR'
+    ((s === 'DR' || s.startsWith('DR')) && !isLowerDr && !s.includes('DOKTER') && (raw.startsWith('Dr.') || raw.toUpperCase().includes('DOKTOR')))
   ) {
     return 'S3';
   }
@@ -583,7 +742,7 @@ export const normalizeStandardJenjang = (val?: any): StandardJenjang | string =>
   if (
     s === 'S2' || s.startsWith('S2') || s.startsWith('STRATA2') || s.startsWith('STRATAII') ||
     s.includes('MAGISTER') || s.includes('MASTER') || s.includes('PASCASARJANA') ||
-    s.includes('PASCA') || s.includes('POSTGRADUATE') || s.includes('SP1') ||
+    s.includes('PASCA') || s.includes('POSTGRADUATE') ||
     s === 'MM' || s === 'MH' || s === 'MKOM' || s === 'MT' || s === 'MSI' || s === 'MPD' ||
     s === 'MSC' || s === 'MENG' || s === 'MAP' || s === 'MAB' || s === 'MAG' || s === 'MKES' ||
     s === 'MKN' || s === 'MLS' || s === 'LLM' || s === 'MBA' || s === 'MPH'
@@ -597,9 +756,14 @@ export const normalizeStandardJenjang = (val?: any): StandardJenjang | string =>
     (s.includes('SARJANA') && !s.includes('TERAPAN') && !s.includes('MUDA')) ||
     s.includes('BACHELOR') || s.includes('UNDERGRADUATE') ||
     s.includes('PROFESI') || s.includes('APOTEKER') || s.includes('NERS') ||
+    s.includes('KEDOKTERAN') || s.includes('DOKTER') || s === 'DRG' || s === 'DRH' ||
+    s === 'SKED' || s === 'SKG' || s === 'SKH' || s === 'SKEP' || s === 'SKEB' || s === 'SKES' || s === 'SGZ' ||
     s === 'SH' || s === 'SE' || s === 'SKOM' || s === 'ST' || s === 'SSI' || s === 'SPD' ||
-    s === 'SSOS' || s === 'SIP' || s === 'SKED' || s === 'SPSI' || s === 'SFARM' ||
-    s === 'SSN' || s === 'SS' || s === 'SPT' || s === 'SPI' || s === 'SP' || s === 'SAP' || s === 'SAB' || s === 'SHUM'
+    s === 'SSOS' || s === 'SIP' || s === 'SPSI' || s === 'SFARM' || s === 'SM' || s === 'SBNS' ||
+    s === 'SSN' || s === 'SS' || s === 'SPT' || s === 'SPI' || s === 'SP' || s === 'SAP' || s === 'SAB' || s === 'SHUM' ||
+    s === 'SAK' || s === 'SAKUN' || s === 'SARS' || s === 'STAT' || s === 'SKM' || s === 'SIK' || s === 'SAG' ||
+    s === 'SLING' || s === 'SHI' || s === 'SSY' || s === 'SSTP' || s === 'SINF' || s === 'STI' || s === 'SPDI' ||
+    s === 'SSOSIO' || s === 'IR' || s === 'DRS' || s === 'DRA'
   ) {
     return 'S1';
   }
@@ -677,9 +841,14 @@ export const degreeWeight = (jenjangStr?: any): number => {
 export const resolveFromGelarTerakhir = (nameWithGelar: string): { pendidikan: string; jurusan: string } | null => {
   if (!nameWithGelar) return null;
   const cleanStr = String(nameWithGelar).trim();
-  const hasDrFront = /^(prof\.?\s+)?dr\.?\s+/i.test(cleanStr);
-  const hasIrFront = /^(prof\.?\s+)?ir\.?\s+/i.test(cleanStr);
-  const hasDrsFront = /^(prof\.?\s+)?(drs|dra)\.?\s+/i.test(cleanStr);
+
+  // Distinguish Dr. (S3 Doktor) vs dr. (S1 Dokter Kedokteran)
+  const hasDoktorFront = /(^|\s)(Prof\.?\s+)?Dr\.\s+/.test(cleanStr) || /\b(DOKTOR|PHD|DPHIL)\b/i.test(cleanStr);
+  const hasDentistFront = /(^|\s)(Prof\.?\s+)?drg\.\s+/i.test(cleanStr);
+  const hasVetFront = /(^|\s)(Prof\.?\s+)?drh\.\s+/i.test(cleanStr);
+  const hasMedDoctorFront = !hasDoktorFront && (/(^|\s)(Prof\.?\s+)?dr\.\s+/.test(cleanStr) || /(^|\s)dr\.\s+/i.test(cleanStr) || /,\s*dr\.?(\s|$)/i.test(cleanStr));
+  const hasIrFront = /(^|\s)(Prof\.?\s+)?Ir\.\s+/i.test(cleanStr);
+  const hasDrsFront = /(^|\s)(Prof\.?\s+)?(Drs|Dra)\.?\s+/i.test(cleanStr);
 
   const commaIdx = cleanStr.indexOf(",");
   let backTokens: string[] = [];
@@ -689,7 +858,7 @@ export const resolveFromGelarTerakhir = (nameWithGelar: string): { pendidikan: s
   } else {
     // If no comma, check individual words from the string for known degree tokens
     const words = cleanStr.split(/[\s,;]+/).map(t => t.replace(/[^A-Za-z]/g, "").toUpperCase()).filter(Boolean);
-    backTokens = words.filter(w => DEGREE_MAP_DATA[w]);
+    backTokens = words.filter(w => DEGREE_MAP_DATA[w] && w !== 'DR');
   }
 
   const matched: { jenjang: string; jurusan: string; weight: number }[] = [];
@@ -701,14 +870,28 @@ export const resolveFromGelarTerakhir = (nameWithGelar: string): { pendidikan: s
 
   if (matched.length > 0) {
     const lastDegree = matched[matched.length - 1]; // Gelar Terakhir
-    if (hasDrFront && lastDegree.weight < 90) {
+    if (hasDoktorFront && lastDegree.weight < 90) {
       return { pendidikan: "S3", jurusan: lastDegree.jurusan ? `Doktor / ${lastDegree.jurusan}` : "Doktor" };
+    }
+    // If has medical doctor prefix and back title has lower weight than S1, keep S1 Kedokteran
+    if ((hasMedDoctorFront || hasDentistFront || hasVetFront) && lastDegree.weight < 70) {
+      const jur = hasDentistFront ? 'Kedokteran Gigi' : (hasVetFront ? 'Kedokteran Hewan' : 'Kedokteran');
+      return { pendidikan: "S1", jurusan: jur };
     }
     return { pendidikan: normalizeStandardJenjang(lastDegree.jenjang) || lastDegree.jenjang, jurusan: lastDegree.jurusan };
   }
 
-  if (hasDrFront) {
+  if (hasDoktorFront) {
     return { pendidikan: "S3", jurusan: "Doktor" };
+  }
+  if (hasDentistFront) {
+    return { pendidikan: "S1", jurusan: "Kedokteran Gigi" };
+  }
+  if (hasVetFront) {
+    return { pendidikan: "S1", jurusan: "Kedokteran Hewan" };
+  }
+  if (hasMedDoctorFront) {
+    return { pendidikan: "S1", jurusan: "Kedokteran" };
   }
   if (hasIrFront) {
     return { pendidikan: "S1", jurusan: "Teknik" };
@@ -924,8 +1107,9 @@ export const resolvePegawaiPendidikanDanJurusan = (pegawai: {
   const riwayat = Array.isArray(pegawai?.riwayatPendidikan) ? pegawai.riwayatPendidikan : [];
   if (riwayat.length > 0) {
     const sortedRiwayat = [...riwayat].sort((a, b) => {
-      const weightA = degreeWeight(a.jenjang);
-      const weightB = degreeWeight(b.jenjang);
+      // Evaluate weight from jenjang, jurusan, or institusi
+      const weightA = Math.max(degreeWeight(a.jenjang), degreeWeight(a.jurusan), degreeWeight(a.institusi));
+      const weightB = Math.max(degreeWeight(b.jenjang), degreeWeight(b.jurusan), degreeWeight(b.institusi));
       if (weightA !== weightB) return weightB - weightA;
       const yrA = String(a.tahunLulus || a.tanggalIjazah || '');
       const yrB = String(b.tahunLulus || b.tanggalIjazah || '');
@@ -934,16 +1118,38 @@ export const resolvePegawaiPendidikanDanJurusan = (pegawai: {
 
     const highest = sortedRiwayat[0];
     if (highest) {
-      const p = normalizeStandardJenjang(highest.jenjang) || highest.jenjang || '';
-      const j = (highest.jurusan || '').trim();
+      let p = normalizeStandardJenjang(highest.jenjang);
+      if (!p || !(STANDARD_JENJANG_LIST as readonly string[]).includes(p as StandardJenjang)) {
+        p = normalizeStandardJenjang(highest.jurusan) || normalizeStandardJenjang(highest.institusi) || highest.jenjang || '';
+      }
+      let j = (highest.jurusan || '').trim();
+      if (!j || j === '-') {
+        if (/kedokteran/i.test(highest.jenjang || '') || /dokter/i.test(highest.jenjang || '') || /s\.?ked/i.test(highest.jenjang || '')) j = 'Kedokteran';
+        else if (/drg|s\.?kg/i.test(highest.jenjang || '')) j = 'Kedokteran Gigi';
+        else if (/drh|s\.?kh/i.test(highest.jenjang || '')) j = 'Kedokteran Hewan';
+        else if (/hukum/i.test(highest.jenjang || '')) j = 'Ilmu Hukum';
+        else if (/manajemen/i.test(highest.jenjang || '')) j = 'Manajemen';
+        else if (/akuntansi/i.test(highest.jenjang || '')) j = 'Akuntansi';
+        else if (/komputer|informatika/i.test(highest.jenjang || '')) j = 'Ilmu Komputer';
+      }
       if (p) {
         return { pendidikan: p, jurusan: j };
       }
     }
   }
 
-  // 2. Apabila tidak ada riwayat pendidikan: Lihat Gelar Terakhirnya
-  const nameWithGelar = `${pegawai?.nama || ''} ${pegawai?.gelarBelakang || ''}`.trim();
+  // 2. Apabila tidak ada riwayat pendidikan: Cek Gelar di nama pegawai & gelarDepan / gelarBelakang
+  const gelarDepan = (pegawai?.gelarDepan || '').trim();
+  const nama = (pegawai?.nama || '').trim();
+  const gelarBelakang = (pegawai?.gelarBelakang || '').trim();
+  const nameWithGelar = `${gelarDepan} ${nama} ${gelarBelakang}`.trim();
+
+  // Explicit check for medical doctor prefix in gelarDepan or nama
+  const isMedDoctor = /(^|\s|,\s*)dr\.\s+/i.test(nameWithGelar) && /(^|\s|,\s*)dr\.\s+/.test(nameWithGelar);
+  const isDentist = /(^|\s|,\s*)drg\.\s+/i.test(nameWithGelar);
+  const isVet = /(^|\s|,\s*)drh\.\s+/i.test(nameWithGelar);
+  const isDoktorS3 = /(^|\s)(Prof\.?\s+)?Dr\.\s+/.test(nameWithGelar) || /\b(DOKTOR|PHD|DPHIL)\b/i.test(nameWithGelar);
+
   const fromGelar = resolveFromGelarTerakhir(nameWithGelar);
   if (fromGelar && fromGelar.pendidikan) {
     return {
@@ -952,13 +1158,36 @@ export const resolvePegawaiPendidikanDanJurusan = (pegawai: {
     };
   }
 
+  const fromCustomUser = resolveUserPendidikan(nameWithGelar);
+  if (fromCustomUser && fromCustomUser.pendidikan) {
+    return {
+      pendidikan: normalizeStandardJenjang(fromCustomUser.pendidikan) || fromCustomUser.pendidikan,
+      jurusan: fromCustomUser.jurusan || (pegawai?.jurusan && pegawai.jurusan !== '-' ? pegawai.jurusan : '')
+    };
+  }
+
+  if (isMedDoctor && !isDoktorS3) {
+    return { pendidikan: "S1", jurusan: pegawai?.jurusan && pegawai.jurusan !== '-' ? pegawai.jurusan : "Kedokteran" };
+  }
+  if (isDentist && !isDoktorS3) {
+    return { pendidikan: "S1", jurusan: pegawai?.jurusan && pegawai.jurusan !== '-' ? pegawai.jurusan : "Kedokteran Gigi" };
+  }
+  if (isVet && !isDoktorS3) {
+    return { pendidikan: "S1", jurusan: pegawai?.jurusan && pegawai.jurusan !== '-' ? pegawai.jurusan : "Kedokteran Hewan" };
+  }
+
   // 3. Fallback: Data yang sudah ada di database atau default
   const existingEdu = (pegawai?.pendidikan || '').trim();
   const existingJur = (pegawai?.jurusan || '').trim();
   if (existingEdu && existingEdu !== '-' && existingEdu.toUpperCase() !== 'LAINNYA') {
+    const norm = normalizeStandardJenjang(existingEdu);
+    let finalJur = existingJur && existingJur !== '-' ? existingJur : '';
+    if (!finalJur) {
+      if (/kedokteran/i.test(existingEdu) || /dokter/i.test(existingEdu)) finalJur = 'Kedokteran';
+    }
     return {
-      pendidikan: normalizeStandardJenjang(existingEdu) || existingEdu,
-      jurusan: existingJur && existingJur !== '-' ? existingJur : ''
+      pendidikan: norm || existingEdu,
+      jurusan: finalJur
     };
   }
 
@@ -1115,9 +1344,18 @@ export const polishGelarDanNama = (rawInput: string): {
       const highestItem = detectedBack[detectedBack.length - 1];
       eduLevel = normalizeStandardJenjang(highestItem.jenjang) || highestItem.jenjang;
       studyProgram = highestItem.bidang || '';
-    } else if (detectedFront.some(p => p.toLowerCase().startsWith('dr.'))) {
+    } else if (detectedFront.some(p => p.startsWith('Dr.'))) {
       eduLevel = 'S3';
       studyProgram = 'Doktor';
+    } else if (detectedFront.some(p => p.toLowerCase().startsWith('drg.'))) {
+      eduLevel = 'S1';
+      studyProgram = 'Kedokteran Gigi';
+    } else if (detectedFront.some(p => p.toLowerCase().startsWith('drh.'))) {
+      eduLevel = 'S1';
+      studyProgram = 'Kedokteran Hewan';
+    } else if (detectedFront.some(p => p.toLowerCase().startsWith('dr.'))) {
+      eduLevel = 'S1';
+      studyProgram = 'Kedokteran';
     }
   }
 

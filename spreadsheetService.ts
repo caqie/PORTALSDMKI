@@ -808,6 +808,7 @@ export const syncTableRemote = async (moduleName: string, action: 'SAVE' | 'DELE
       
       if (s.includes("D3") || s.includes("D-III") || s.includes("D III") || s.includes("D-3")) return "DIII";
       if (s.includes("D4") || s.includes("D-IV") || s.includes("D IV") || s.includes("D-4") || s.includes("DIV")) return "D IV";
+      if (s.includes("KEDOKTERAN") || (s.includes("DOKTER") && !s.includes("DOKTOR")) || s === "DRG" || s === "DRH" || s === "SKED") return "S1";
       if (s.includes("S1") || s.includes("S-1") || s.includes("S 1") || s.includes("SARJANA")) return "S1";
       if (s.includes("S2") || s.includes("S-2") || s.includes("S 2") || s.includes("MAGISTER")) return "S2";
       if (s.includes("S3") || s.includes("S-3") || s.includes("S 3") || s.includes("DOKTOR")) return "S3";

@@ -54,6 +54,11 @@ import AttendanceSettingsPage from './pages/Admin/AttendanceSettingsPage';
 import TupoksiSDMPage from './pages/TupoksiSDMPage';
 import TubelIbelPage from './pages/TubelIbelPage';
 import EvaluasiPPPKPage from './pages/EvaluasiPPPKPage';
+import CatPPPKLoginPage from './pages/CatPPPKLoginPage';
+import CatPPPKDashboardPage from './pages/CatPPPKDashboardPage';
+import CatPPPKExamPage from './pages/CatPPPKExamPage';
+import CatPPPKResultPage from './pages/CatPPPKResultPage';
+import CatPPPKAdminPage from './pages/CatPPPKAdminPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initializeAllSDMData } from './sampleDataSDM';
 import { DEFAULT_LOGO, APP_ROUTES } from './constants';
@@ -510,6 +515,27 @@ const AppContent = () => {
     );
   }
 
+  // CAT Evaluasi PPPK Standalone Layout (Runs full screen in its own window without main sidebar)
+  if (location.pathname.startsWith('/cat-pppk')) {
+    if (isPageInMaintenance(location.pathname) && !isSuperadmin) {
+      return (
+        <div className="h-screen w-full flex items-center justify-center bg-gray-50">
+          <MaintenanceView />
+        </div>
+      );
+    }
+    return (
+      <Routes>
+        <Route path="/cat-pppk/login" element={<CatPPPKLoginPage />} />
+        <Route path="/cat-pppk/dashboard" element={<CatPPPKDashboardPage />} />
+        <Route path="/cat-pppk/exam" element={<CatPPPKExamPage />} />
+        <Route path="/cat-pppk/hasil" element={<CatPPPKResultPage />} />
+        <Route path="/cat-pppk/admin" element={<CatPPPKAdminPage />} />
+        <Route path="*" element={<Navigate to="/cat-pppk/login" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F8F9FC] text-gray-900 font-['Inter']">
       {isSidebarOpen && window.innerWidth < 1024 && (
@@ -734,6 +760,7 @@ const AppContent = () => {
                     />
                     <SidebarItem to="/dossiers" icon="bi-folder-fill" label="E-Dossier Digital" active={location.pathname === '/dossiers'} collapsed={isCollapsed} />
                     <SidebarItem to="/evaluasi-pppk" icon="bi-award-fill" label="Evaluasi PPPK" active={location.pathname.startsWith('/evaluasi-pppk')} collapsed={isCollapsed} />
+                    <SidebarItem to="/cat-pppk/login" icon="bi-pc-display" label="CAT Evaluasi PPPK" active={location.pathname.startsWith('/cat-pppk')} collapsed={isCollapsed} target="_blank" />
                     <SidebarItem to="/ukom/login" icon="bi-pencil-square" label="Portal Ujian CAT" active={location.pathname.startsWith('/ukom')} collapsed={isCollapsed} target="_blank" />
 
                     {!isCollapsed && <div className="px-8 py-3 text-[8px] font-black text-slate-500 tracking-[0.2em]">Pintasan Admin</div>}
@@ -770,6 +797,7 @@ const AppContent = () => {
                     />
                     <SidebarItem to="/dossiers" icon="bi-folder-fill" label="E-Dossier Digital" active={location.pathname === '/dossiers'} collapsed={isCollapsed} />
                     <SidebarItem to="/evaluasi-pppk" icon="bi-award-fill" label="Evaluasi PPPK" active={location.pathname.startsWith('/evaluasi-pppk')} collapsed={isCollapsed} />
+                    <SidebarItem to="/cat-pppk/login" icon="bi-pc-display" label="CAT Evaluasi PPPK" active={location.pathname.startsWith('/cat-pppk')} collapsed={isCollapsed} target="_blank" />
                     <SidebarItem to="/ukom/login" icon="bi-pencil-square" label="Portal Ujian CAT" active={location.pathname.startsWith('/ukom')} collapsed={isCollapsed} target="_blank" />
                   </>
                 )}
@@ -857,7 +885,8 @@ const AppContent = () => {
 
                 {hasAccess('/ukom/login') && (
                   <>
-                    {!isCollapsed && <div className="px-8 py-4 text-[8px] font-black text-slate-500 tracking-[0.2em]">Uji Kompetensi</div>}
+                    {!isCollapsed && <div className="px-8 py-4 text-[8px] font-black text-slate-500 tracking-[0.2em]">Uji Kompetensi & CAT</div>}
+                    <SidebarItem to="/cat-pppk/login" icon="bi-award-fill" label="CAT Evaluasi PPPK" active={location.pathname.startsWith('/cat-pppk')} collapsed={isCollapsed} target="_blank" />
                     <SidebarItem to="/ukom/login" icon="bi-pencil-square" label="Portal Ujian CAT" active={location.pathname.startsWith('/ukom') && location.pathname !== '/ukom/admin'} collapsed={isCollapsed} target="_blank" />
                   </>
                 )}

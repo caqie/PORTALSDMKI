@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchPegawaiFromSheets, getRetirementDetails, fetchPengembanganFromSheets, fetchKGBFromSheets, fetchKegiatanFromSheets, fetchAbsensiHistoryFromSheets } from '../spreadsheetService';
 import { Pegawai, Pengembangan, KGB, Kegiatan, AbsensiRecord } from '../types';
 import { useAuth } from '../AuthContext';
-import { UNIT_KERJA, normalizeUnitName, formatPegawaiName, getJabatanClassification, resolveUserPendidikan } from '../constants';
+import { UNIT_KERJA, normalizeUnitName, formatPegawaiName, getJabatanClassification, resolveUserPendidikan, resolvePegawaiPendidikanDanJurusan } from '../constants';
 import * as XLSX from 'xlsx';
 import { safeJsonToSheet, safeAoaToSheet, safeWriteExcel } from '../lib/excelSanitizer';
 import CalendarView from '../components/CalendarView';
@@ -502,20 +502,28 @@ const Dashboard = () => {
     const eduMap: Record<string, number> = {};
     filteredList.forEach(p => {
       let edu = 'LAINNYA';
-      let pStr = (p.pendidikan || '').toUpperCase().trim();
+      
+      // Resolve comprehensive education including riwayatPendidikan, gelar depan (dr., drg.), and titles
+      const resolved = resolvePegawaiPendidikanDanJurusan(p);
+      let pStr = (resolved?.pendidikan || p.pendidikan || '').toUpperCase().trim();
 
-      // If missing or uninformative, deduce from academic title in employee name
+      // If still missing or uninformative, deduce from academic title in employee name
       if (!pStr || pStr === '-' || pStr === 'LAINNYA') {
-        const resolved = resolveUserPendidikan(p.nama);
-        if (resolved && resolved.pendidikan) {
-          pStr = resolved.pendidikan.toUpperCase().trim();
+        const fromName = resolveUserPendidikan(p.nama);
+        if (fromName && fromName.pendidikan) {
+          pStr = fromName.pendidikan.toUpperCase().trim();
         }
       }
 
       const cleanP = pStr.replace(/[^A-Z0-9]/g, '');
       if (cleanP.includes('S3') || cleanP.includes('DOKTOR') || pStr.includes('S-3')) edu = 'S3 (DOKTOR)';
       else if (cleanP.includes('S2') || cleanP.includes('MAGISTER') || pStr.includes('S-2')) edu = 'S2 (MAGISTER)';
-      else if (cleanP.includes('S1') || cleanP.includes('SARJANA') || pStr.includes('S-1')) edu = 'S1 (SARJANA)';
+      else if (
+        cleanP.includes('S1') || cleanP.includes('SARJANA') || pStr.includes('S-1') ||
+        cleanP.includes('KEDOKTERAN') || (cleanP.includes('DOKTER') && !cleanP.includes('DOKTOR')) ||
+        cleanP === 'DRG' || cleanP === 'DRH' || cleanP === 'SKED' || cleanP === 'SKG' ||
+        cleanP === 'SKEP' || cleanP === 'PROFESI' || cleanP === 'APT' || cleanP === 'NERS'
+      ) edu = 'S1 (SARJANA)';
       else if (cleanP.includes('DIV') || cleanP.includes('D4') || pStr.includes('D-IV')) edu = 'D-IV / SARJANA TERAPAN';
       else if (cleanP.includes('DIII') || cleanP.includes('D3') || pStr.includes('D-III')) edu = 'D-III';
       else if (cleanP.includes('SMA') || cleanP.includes('SMK') || cleanP.includes('SLTA')) edu = 'SMA / SEDERAJAT';
@@ -1140,6 +1148,17 @@ const Dashboard = () => {
           >
             <i className="bi bi-diagram-3-fill text-base md:text-lg"></i>
             <span>Bagan SOTK</span>
+          </button>
+          <button 
+            onClick={() => {
+              localStorage.setItem('portal_direct_access', '/cat-pppk/login');
+              window.open(window.location.origin, '_blank');
+            }}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 p-3 md:p-4 px-4 md:px-6 rounded-xl md:rounded-2xl text-white text-[9px] md:text-[10px] font-black tracking-widest shadow-xl shadow-emerald-600/20 active:scale-95 transition-all"
+            title="Buka Portal CAT Uji Kompetensi & Evaluasi PPPK Mandiri (Tab Baru)"
+          >
+            <i className="bi bi-award-fill text-base md:text-lg"></i>
+            <span>CAT PPPK</span>
           </button>
           <button 
             onClick={() => {

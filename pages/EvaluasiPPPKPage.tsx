@@ -575,6 +575,54 @@ const EvaluasiPPPKPage: React.FC = () => {
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-5">
         
+        {/* Banner Pemisahan CAT Uji Kompetensi PPPK (Standalone) */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/40 rounded-3xl p-5 md:p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-2.5 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0">
+              <i className="bi bi-laptop text-2xl"></i>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Sistem Terpisah (CAT Standalone)
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">&bull; Uji Kompetensi Kemenkumham RI</span>
+              </div>
+              <h3 className="text-base md:text-lg font-black tracking-tight text-white mt-1">
+                Portal CAT Uji Kompetensi & Evaluasi Perpanjangan Kontrak PPPK
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Evaluasi kinerja PPPK dengan format tes berbasis komputer (CAT) mandiri: Manajerial, Sosio-Kultural, Teknis DJKI, dan Core Values BerAKHLAK.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('portal_direct_access', '/cat-pppk/login');
+                window.open(window.location.origin, '_blank');
+              }}
+              className="flex-1 md:flex-none px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              <i className="bi bi-box-arrow-up-right"></i>
+              <span>Buka Portal CAT PPPK</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('portal_direct_access', '/cat-pppk/admin');
+                window.open(window.location.origin, '_blank');
+              }}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <i className="bi bi-speedometer2 text-emerald-400"></i>
+              <span className="hidden sm:inline">Monitoring Admin</span>
+            </button>
+          </div>
+        </div>
+
         {/* Superadmin Mode Uji Coba (Simulator) Banner & Bar */}
         {isSimulationActive ? (
           <div className="space-y-4">

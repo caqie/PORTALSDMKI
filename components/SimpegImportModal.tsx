@@ -330,7 +330,11 @@ export const SimpegImportModal: React.FC<SimpegImportModalProps> = ({
     const v = (val || '').toUpperCase().trim();
     if (v.includes('S-3') || v.includes('S3') || v.includes('DOKTOR')) return 'S3';
     if (v.includes('S-2') || v.includes('S2') || v.includes('MAGISTER')) return 'S2';
-    if (v.includes('S-1') || v.includes('S1') || v.includes('SARJANA')) return 'S1';
+    if (
+      v.includes('S-1') || v.includes('S1') || v.includes('SARJANA') || 
+      v.includes('KEDOKTERAN') || (v.includes('DOKTER') && !v.includes('DOKTOR')) || 
+      v.includes('PROFESI') || v === 'DR' || v.startsWith('DR.') || v.startsWith('DRG') || v === 'SKED'
+    ) return 'S1';
     if (v.includes('D-IV') || v.includes('D4') || v.includes('DIV')) return 'D4';
     if (v.includes('D-III') || v.includes('D3') || v.includes('DIII')) return 'D3';
     if (v.includes('D-II') || v.includes('D2') || v.includes('DII')) return 'D2';
@@ -356,11 +360,11 @@ export const SimpegImportModal: React.FC<SimpegImportModalProps> = ({
       v.includes('SEKOLAH') || 
       v.includes('FACULTY') ||
       v.includes('POLITEKNIK') ||
-      v.length > 12
+      v.length > 15
     ) {
       return false;
     }
-    return /^(SD|SMP|SMA|SMK|SLTA|SLTP|D-?I|D-?II|D-?III|D-?IV|S-?1|S-?2|S-?3|D[1-4]|S[1-3]|SARJANA|MAGISTER|DOKTOR|PASCA\s*SARJANA)$/i.test(v) ||
+    return /^(SD|SMP|SMA|SMK|SLTA|SLTP|D-?I|D-?II|D-?III|D-?IV|S-?1|S-?2|S-?3|D[1-4]|S[1-3]|SARJANA|MAGISTER|DOKTOR|PASCA\s*SARJANA|KEDOKTERAN|DOKTER|PROFESI|DRG?|SKED)$/i.test(v) ||
            /^(S-?1|S-?2|S-?3|D-?[1-4])\b/i.test(v);
   };
 
