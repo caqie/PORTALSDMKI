@@ -1,0 +1,1300 @@
+# PROMPT UTAMA — PEMISAHAN DAN PENGEMBANGAN MODUL EVALUASI PPPK PORTAL SDM KI
+
+Anda bertindak sebagai **Senior Full-Stack Developer, Software Architect, UI/UX Designer, Database Engineer, dan Application Security Engineer** yang bertanggung jawab mengembangkan modul Evaluasi PPPK pada aplikasi Portal SDM KI Direktorat Jenderal Kekayaan Intelektual (DJKI), Kementerian Hukum Republik Indonesia.
+
+Saya sudah memiliki aplikasi Portal SDM KI dan kode sumber modul Evaluasi PPPK, terutama file `EvaluasiPPPKPage.tsx` beserta komponen, tipe data, service, dan fungsi pendukungnya.
+
+Tugas Anda adalah melakukan pengembangan menyeluruh terhadap modul Evaluasi PPPK dengan mengubahnya menjadi **aplikasi mandiri (standalone application/module)** yang tetap terintegrasi dengan Portal SDM KI.
+
+Jangan membuat aplikasi baru yang tidak terhubung dengan sistem yang sudah ada. Jangan menghilangkan fungsi lama. Jangan merusak halaman, autentikasi, database, routing, maupun modul lain pada Portal SDM KI.
+
+Seluruh perubahan harus diterapkan pada proyek yang sudah tersedia dengan mempertahankan kompatibilitas terhadap data dan fitur yang telah berjalan.
+
+**PENTING:**
+- Jangan membagi pekerjaan menjadi Phase 1, Phase 2, dan seterusnya.
+- Jangan hanya memberikan contoh desain, mockup, atau potongan kode.
+- Lakukan implementasi langsung pada kode proyek yang tersedia.
+- Jangan menghapus fungsi lama sebelum memastikan penggantinya bekerja.
+- Jangan membuat data pegawai, akun, penugasan, maupun hasil penilaian fiktif.
+- Jangan menggunakan layanan AI berbayar atau menambahkan penggunaan token Gemini/API berbayar untuk menjalankan proses evaluasi.
+- Jangan mengubah struktur utama Portal SDM KI di luar kebutuhan integrasi modul ini.
+
+---
+
+# 1. TUJUAN UTAMA PENGEMBANGAN
+
+Buat modul Evaluasi PPPK menjadi aplikasi tersendiri yang mempunyai:
+
+1. URL akses tersendiri.
+2. Halaman login tersendiri atau mekanisme SSO yang terintegrasi secara aman.
+3. Dashboard tersendiri.
+4. Navigasi dan menu tersendiri.
+5. Hak akses berdasarkan peran pengguna.
+6. Database atau layanan data yang terintegrasi dengan sumber data resmi Portal SDM KI.
+7. Pengelolaan penilaian kinerja PPPK.
+8. Pengelolaan penilai dan penilai eksternal.
+9. Pengelolaan penilaian hasil kerja, perilaku, dan kehadiran.
+10. Proses pemeriksaan, persetujuan, finalisasi, dan pelaporan.
+11. Pengelolaan oleh Admin dan Editor melalui Portal SDM KI.
+
+Modul harus dapat berjalan secara mandiri tanpa harus membuka dashboard utama Portal SDM KI terlebih dahulu.
+
+# 2. ARSITEKTUR DAN URL APLIKASI
+
+Gunakan struktur alamat berikut:
+
+**Portal utama:**
+
+https://portalsdm.caqiestudio.my.id/
+
+**Modul Evaluasi PPPK:**
+
+https://portalsdm.caqiestudio.my.id/EvaluasiPPPK
+
+Alamat `/EvaluasiPPPK` merupakan alamat khusus untuk aplikasi Evaluasi PPPK.
+
+Ketentuan:
+
+1. Modul dapat dibuka langsung melalui URL tersebut.
+2. Pengguna dapat melakukan login langsung pada halaman Evaluasi PPPK.
+3. Setelah login, pengguna diarahkan ke dashboard sesuai hak aksesnya.
+4. Pengguna tidak perlu masuk ke dashboard Portal SDM KI terlebih dahulu.
+5. Refresh browser pada halaman modul tidak boleh menghasilkan halaman 404.
+6. Semua routing internal modul harus menggunakan prefix atau namespace `/EvaluasiPPPK`.
+7. Routing Portal SDM KI yang sudah ada tidak boleh terganggu.
+8. Pastikan konfigurasi deployment dan rewrite URL mendukung akses langsung ke `/EvaluasiPPPK`.
+9. Jangan mengubah domain utama.
+10. Jangan membuat alamat domain baru tanpa instruksi.
+
+**Pemisahan aplikasi:**
+
+Modul Evaluasi PPPK harus dipisahkan dari sisi:
+- Antarmuka pengguna.
+- Routing.
+- Navigasi.
+- Halaman login.
+- Dashboard.
+- Pengaturan modul.
+- Hak akses.
+- Alur kerja.
+- Komponen khusus evaluasi.
+
+Namun, modul tetap dapat menggunakan:
+- Master data pegawai Portal SDM KI.
+- Identitas pengguna yang terverifikasi.
+- Backend atau database bersama melalui layanan yang aman.
+- Data organisasi dan unit kerja resmi.
+- Infrastruktur penyimpanan yang telah digunakan Portal SDM KI.
+
+Jangan melakukan duplikasi master pegawai yang menyebabkan data tidak sinkron.
+
+Apabila aplikasi saat ini menggunakan satu frontend React, implementasikan pemisahan melalui routing dan layout mandiri yang benar. Jika arsitektur proyek mendukung deployment aplikasi terpisah, gunakan konfigurasi tersebut tanpa merusak aplikasi utama.
+
+# 3. INTEGRASI DENGAN PORTAL SDM KI
+
+Portal SDM KI tetap menjadi sistem utama.
+
+Tambahkan akses khusus menuju Evaluasi PPPK pada dashboard atau menu Portal SDM KI.
+
+Akses tersebut hanya ditampilkan kepada pengguna yang memiliki hak Admin atau Editor sesuai konfigurasi.
+
+Ketika Admin atau Editor memilih menu Evaluasi PPPK:
+
+- Aplikasi membuka `/EvaluasiPPPK`.
+- Jika sesi autentikasi masih berlaku, pengguna dapat diarahkan masuk dengan SSO yang aman.
+- Jika sesi belum tersedia, tampilkan halaman login.
+- Setelah masuk, pengguna mendapatkan hak akses pengelolaan sesuai perannya.
+
+Jangan menyimpan token autentikasi permanen pada URL, query string, atau parameter yang mudah dibaca.
+
+Gunakan mekanisme autentikasi yang aman, misalnya:
+- Shared authentication session yang aman.
+- SSO berbasis backend.
+- Secure HttpOnly cookie dengan konfigurasi yang sesuai.
+- Token otorisasi singkat dan sekali pakai jika memang diperlukan.
+
+Jangan menganggap bahwa kedua aplikasi otomatis memiliki sesi login yang sama hanya karena menggunakan domain yang sama.
+
+Jika sistem autentikasi Portal SDM KI belum mendukung SSO, buat adapter atau mekanisme integrasi yang sesuai dengan sistem autentikasi yang sudah ada. Jangan membuat autentikasi palsu.
+
+# 4. PEMBAGIAN PERAN PENGGUNA
+
+Modul mempunyai tiga kelompok pengguna operasional utama dan satu kelompok pengelola sistem.
+
+## A. PENILAI / ATASAN LANGSUNG
+
+Penilai adalah pejabat yang memiliki kewenangan menilai PPPK berdasarkan hubungan penugasan dan struktur organisasi yang berlaku.
+
+Penilai dapat berasal dari:
+
+- Pejabat Eselon III.
+- Pejabat Eselon IV.
+- Ketua Tim Kerja.
+
+Penentuan penilai harus mengikuti posisi dan penempatan PPPK yang dinilai.
+
+Jangan menetapkan seluruh pejabat Eselon III, Eselon IV, atau Ketua Tim Kerja sebagai penilai secara otomatis.
+
+Penetapan harus mempertimbangkan:
+- Unit kerja.
+- Bagian atau subbagian.
+- Penempatan PPPK.
+- Hubungan atasan langsung.
+- Struktur organisasi.
+- Penugasan yang ditetapkan Admin.
+- Periode penilaian yang berlaku.
+
+Jika informasi hubungan organisasi tidak tersedia pada master pegawai, sediakan pengaturan pemetaan penilai oleh Admin. Jangan menebak hubungan atasan hanya berdasarkan nama jabatan.
+
+**Hak akses Penilai:**
+
+1. Melihat daftar PPPK yang menjadi tanggung jawabnya.
+2. Melihat periode evaluasi.
+3. Melihat status evaluasi setiap PPPK.
+4. Menetapkan penilai eksternal/rekan kerja.
+5. Memeriksa hasil penilaian rekan kerja.
+6. Menilai hasil kerja berdasarkan SKP.
+7. Memeriksa bukti hasil kerja.
+8. Menilai perilaku kerja sesuai ketentuan.
+9. Melihat data kehadiran yang sudah diimpor.
+10. Memeriksa rekapitulasi nilai.
+11. Memberikan catatan dan rekomendasi.
+12. Mengajukan perbaikan jika diperlukan.
+13. Melakukan finalisasi apabila memiliki kewenangan.
+14. Melihat riwayat penilaian.
+15. Mengunduh laporan penilaian sesuai hak akses.
+
+Satu Penilai dapat memiliki lebih dari satu PPPK yang dinilai.
+
+Penilai tidak boleh melihat atau mengubah evaluasi PPPK yang bukan menjadi tanggung jawabnya, kecuali diberikan kewenangan khusus oleh Admin.
+
+## B. PENILAI EKSTERNAL / REKAN KERJA
+
+Penilai eksternal merupakan pegawai yang ditunjuk oleh atasan langsung untuk memberikan penilaian perilaku terhadap PPPK.
+
+Penilai eksternal dapat berasal dari:
+
+- PNS.
+- PPPK.
+
+Penilai eksternal bukan pejabat penilai utama.
+
+Penilai eksternal hanya bertugas memberikan penilaian sesuai penugasan yang diterimanya.
+
+**Alur penetapan:**
+
+1. Penilai membuka daftar PPPK yang menjadi tanggung jawabnya.
+2. Penilai memilih PPPK yang akan dievaluasi.
+3. Penilai membuka menu penetapan penilai eksternal.
+4. Sistem menampilkan daftar pegawai yang dapat dipilih berdasarkan master pegawai resmi.
+5. Penilai memilih pegawai PNS atau PPPK sebagai rekan kerja penilai.
+6. Sistem memeriksa validitas identitas dan penugasan.
+7. Sistem menyimpan penugasan.
+8. Penilai eksternal menerima tugas pada dashboard masing-masing.
+9. Penilai eksternal mengisi penilaian perilaku.
+10. Hasil penilaian masuk ke sistem untuk diperiksa sesuai alur yang berlaku.
+
+Jumlah dan komposisi penilai eksternal harus dapat diatur Admin.
+
+Jika ketentuan organisasi menetapkan satu PNS dan satu PPPK sebagai rekan penilai, sediakan konfigurasi tersebut sebagai aturan yang dapat diaktifkan Admin. Jangan mengunci aturan ini secara permanen pada kode.
+
+**Hak akses Penilai Eksternal:**
+
+- Melihat tugas penilaian yang diberikan kepadanya.
+- Melihat identitas PPPK yang harus dinilai sebatas informasi yang diperlukan.
+- Mengisi penilaian perilaku.
+- Menyimpan draft.
+- Mengirim hasil penilaian.
+- Melihat status pengiriman.
+- Melihat riwayat penilaian yang pernah dilakukan sendiri.
+
+Penilai eksternal tidak boleh:
+- Mengubah SKP.
+- Mengubah data kehadiran.
+- Mengubah nilai hasil kerja.
+- Menetapkan penilai lain.
+- Melakukan finalisasi evaluasi.
+- Melihat hasil penilaian pegawai lain.
+- Mengubah data pegawai.
+- Mengakses menu Admin.
+
+Satu pegawai dapat memiliki lebih dari satu jenis peran jika memang mempunyai penugasan yang sah. Semua tindakan tetap harus diperiksa oleh backend.
+
+## C. PPPK YANG DINILAI
+
+PPPK yang dinilai adalah pegawai yang menjadi objek evaluasi kinerja.
+
+Setiap PPPK hanya dapat mengakses data evaluasi miliknya sendiri.
+
+**Hak akses:**
+
+1. Melihat dashboard pribadi.
+2. Melihat periode penilaian.
+3. Melihat status evaluasi.
+4. Mengisi atau memperbarui informasi hasil kerja yang memang menjadi bagian tugas PPPK.
+5. Mengunggah bukti dukung hasil kerja.
+6. Melihat data SKP/RHK yang terkait dengan evaluasi dirinya.
+7. Melihat rekapitulasi kehadiran miliknya.
+8. Melihat hasil penilaian sesuai tahapan publikasi yang ditentukan.
+9. Melihat catatan atau permintaan perbaikan.
+10. Mengirim tanggapan atau perbaikan jika diizinkan.
+11. Mengunduh laporan hasil evaluasi apabila sudah dipublikasikan.
+12. Melihat riwayat evaluasi pribadi.
+
+PPPK tidak boleh:
+- Mengubah nilai dari Penilai.
+- Mengubah penilaian rekan kerja.
+- Mengubah data kehadiran hasil impor.
+- Mengubah penugasan penilai.
+- Melihat data PPPK lainnya.
+- Melakukan finalisasi.
+- Mengubah periode penilaian.
+- Mengakses pengaturan sistem.
+
+PPPK hanya dapat mengisi data yang memang diperuntukkan bagi dirinya sendiri.
+
+## D. ADMIN DAN EDITOR
+
+Admin dan Editor tetap mengakses pengelolaan modul melalui Portal SDM KI.
+
+Keduanya merupakan pengelola sistem, bukan kelompok pengguna operasional penilaian.
+
+### Admin
+
+Admin mempunyai kewenangan penuh sesuai kebijakan sistem, termasuk:
+
+- Mengelola periode penilaian.
+- Mengelola master pegawai yang digunakan modul.
+- Memetakan atasan langsung.
+- Memetakan unit kerja dan penempatan.
+- Mengelola penugasan penilai.
+- Mengelola penilai eksternal.
+- Mengelola komposisi penilai.
+- Mengelola aspek perilaku.
+- Mengelola bobot penilaian.
+- Mengelola konfigurasi.
+- Mengimpor data kehadiran.
+- Mengelola data SKP jika menjadi kewenangan Admin.
+- Memantau seluruh evaluasi.
+- Memproses koreksi.
+- Mengatur kewenangan finalisasi.
+- Melihat audit log.
+- Mengelola laporan.
+- Mengelola akun dan hak akses modul.
+
+### Editor
+
+Editor dapat diberikan kewenangan operasional seperti:
+
+- Memasukkan dan memperbarui data yang diizinkan.
+- Memeriksa kelengkapan evaluasi.
+- Mengelola data operasional.
+- Mengimpor data jika diizinkan.
+- Memantau progres.
+- Menyiapkan laporan.
+- Membantu proses koreksi sesuai kewenangan.
+
+Editor tidak otomatis memiliki hak untuk:
+- Menghapus data secara permanen.
+- Mengubah hak akses.
+- Mengubah konfigurasi keamanan.
+- Mengubah seluruh master sistem.
+- Mengubah atau menghapus audit log.
+- Melakukan tindakan yang hanya diperuntukkan bagi Admin.
+
+Buat permission matrix yang jelas dan dapat dikembangkan.
+
+# 5. AUTENTIKASI DAN IDENTITAS PEGAWAI
+
+Gunakan sistem autentikasi yang sudah ada apabila memungkinkan.
+
+Identitas pegawai harus dicocokkan dengan master data pegawai resmi Portal SDM KI.
+
+Gunakan identitas utama seperti:
+- ID pegawai.
+- NIP.
+- Nama.
+- Unit kerja.
+- Jabatan.
+- Jenis pegawai.
+- Status pegawai.
+
+Pencocokan identitas tidak boleh hanya berdasarkan nama.
+
+**Perbaiki masalah pada kode lama:**
+
+Jika `realPegawai` tidak menemukan kecocokan, jangan membuat data pegawai palsu.
+
+Hapus mekanisme fallback yang menghasilkan NIP dummy seperti:
+
+`198801012015031001`
+
+Jangan menggunakan identitas default:
+- `USER-ADMIN`.
+- `Administrator SDM`.
+
+Jangan memberikan role Admin secara otomatis ketika data pengguna tidak ditemukan.
+
+Jika identitas tidak dapat dicocokkan:
+1. Tampilkan pesan bahwa profil pegawai belum terhubung dengan master pegawai.
+2. Jangan memberikan akses ke fitur yang memerlukan identitas resmi.
+3. Catat kegagalan pencocokan.
+4. Sediakan mekanisme penyelesaian oleh Admin.
+
+**Perbaiki logika `realRoles`:**
+
+Jangan menentukan role hanya dengan pencarian kata pada jabatan seperti:
+- Ketua Tim.
+- Koordinator.
+- Direktur.
+- Kepala.
+
+Jangan memberikan role `PEJABAT_PENILAI` secara otomatis kepada seluruh pengguna yang tidak terdeteksi sebagai PPPK.
+
+Role harus berasal dari:
+- Akun yang terautentikasi.
+- Identitas pegawai resmi.
+- Penugasan aktif.
+- Relasi penilai dan PPPK.
+- Konfigurasi hak akses yang disahkan Admin.
+
+Pengguna dapat memiliki beberapa role jika memang memiliki penugasan yang berbeda.
+
+Setiap perubahan konteks role harus divalidasi oleh backend.
+
+# 6. STRUKTUR DASHBOARD DAN NAVIGASI
+
+Buat tampilan mandiri dengan identitas visual Portal SDM KI, tetapi tetap mempunyai desain dan navigasi sendiri.
+
+Gunakan desain:
+- Modern.
+- Profesional.
+- Bersih.
+- Konsisten.
+- Responsif.
+- Mudah dipahami oleh pengguna nonteknis.
+- Cocok untuk aplikasi administrasi pemerintahan.
+
+Gunakan sidebar yang dapat diperluas dan diciutkan.
+
+Sediakan header yang berisi:
+- Logo/identitas aplikasi.
+- Nama modul.
+- Nama pengguna.
+- Jabatan.
+- Unit kerja.
+- Periode evaluasi aktif.
+- Notifikasi.
+- Profil.
+- Logout.
+
+Buat dashboard berbeda berdasarkan peran.
+
+### Dashboard Penilai
+
+Tampilkan:
+- Total PPPK yang menjadi tanggung jawab.
+- Jumlah belum dinilai.
+- Jumlah dalam proses.
+- Jumlah menunggu penilaian eksternal.
+- Jumlah menunggu pemeriksaan.
+- Jumlah siap finalisasi.
+- Jumlah selesai.
+- Daftar PPPK.
+- Progress evaluasi.
+- Notifikasi pekerjaan yang belum selesai.
+
+### Dashboard Penilai Eksternal
+
+Tampilkan:
+- Jumlah tugas penilaian.
+- Tugas belum dikerjakan.
+- Draft penilaian.
+- Tugas terkirim.
+- Riwayat penilaian.
+- Batas waktu pengisian.
+
+### Dashboard PPPK
+
+Tampilkan:
+- Periode evaluasi.
+- Status evaluasi.
+- Daftar SKP/RHK.
+- Bukti dukung.
+- Rekapitulasi kehadiran.
+- Status penilaian perilaku.
+- Status hasil evaluasi.
+- Catatan perbaikan.
+- Riwayat evaluasi.
+
+### Dashboard Admin/Editor
+
+Tampilkan:
+- Total PPPK.
+- Total Penilai.
+- Total Penilai Eksternal.
+- Total evaluasi.
+- Evaluasi belum dimulai.
+- Evaluasi sedang berlangsung.
+- Evaluasi menunggu pemeriksaan.
+- Evaluasi selesai.
+- Grafik progres.
+- Distribusi evaluasi per unit kerja.
+- Daftar pekerjaan yang membutuhkan tindak lanjut.
+- Aktivitas terbaru.
+
+# 7. MENU DAN FITUR MODUL EVALUASI PPPK
+
+Pertahankan fitur yang sudah ada pada kode sumber dan susun ke dalam menu yang lebih terstruktur.
+
+Gunakan komponen enterprise yang sudah tersedia jika masih relevan:
+
+- `RoleAndPeriodSelectorBar`
+- `PPPKDashboardTab`
+- `PPPKPenetapanPenilaiTab`
+- `PPPKPenilaianHasilKerjaTab`
+- `PPPKPenilaianPerilakuTab`
+- `PPPKPenilaianKehadiranTab`
+- `PPPKHasilPenilaianTab`
+- `PPPKFinalisasiTab`
+- `PPPKRiwayatPenilaianTab`
+- `PPPKLaporanTab`
+- `PPPKPengaturanPeriodeTab`
+- `PPPKRealRoleHeader`
+
+Susun menu berdasarkan hak akses.
+
+## Menu utama yang perlu tersedia
+
+### 1. Dashboard
+
+Menampilkan ringkasan progres evaluasi berdasarkan role.
+
+### 2. Penetapan Penilai
+
+Digunakan Admin dan Penilai sesuai kewenangannya.
+
+Fitur:
+- Daftar PPPK.
+- Penetapan atasan langsung.
+- Penetapan rekan kerja penilai.
+- Pemetaan unit kerja.
+- Pemetaan periode.
+- Status penugasan.
+- Riwayat perubahan penugasan.
+
+### 3. Penilaian Hasil Kerja
+
+Fitur:
+- Daftar SKP/RHK.
+- Indikator hasil kerja.
+- Target.
+- Realisasi.
+- Capaian.
+- Bukti dukung.
+- Catatan Penilai.
+- Nilai hasil kerja.
+- Status pemeriksaan.
+
+Jangan membuat formula atau bobot penilaian baru yang tidak memiliki dasar pada ketentuan atau konfigurasi yang disetujui.
+
+Jika formula belum tersedia, gunakan konfigurasi Admin dan tampilkan penanda bahwa formula perlu ditetapkan.
+
+### 4. Penilaian Perilaku
+
+Gunakan aspek perilaku yang sudah tersedia pada database dan service.
+
+Fitur:
+- Daftar aspek perilaku.
+- Deskripsi aspek.
+- Indikator penilaian.
+- Penilaian oleh atasan.
+- Penilaian oleh rekan kerja.
+- Penilaian mandiri jika memang diaktifkan.
+- Catatan penilaian.
+- Status pengiriman.
+- Rekapitulasi.
+
+Bobot dan rumus harus mengikuti konfigurasi resmi yang digunakan sistem.
+
+### 5. Penilaian Kehadiran
+
+Gunakan data kehadiran yang diimpor dari aplikasi absensi lain.
+
+Fitur:
+- Impor file PDF atau format lain yang sudah didukung.
+- Pemeriksaan format file.
+- Pencocokan NIP.
+- Pencocokan periode.
+- Rekapitulasi kehadiran.
+- Jumlah hadir.
+- Jumlah terlambat.
+- Jumlah pulang cepat.
+- Data ketidakhadiran sesuai sumber.
+- Riwayat impor.
+- Validasi data ganda.
+- Laporan kesalahan impor.
+
+Jangan mengubah data sumber secara diam-diam.
+
+Jika data tidak dapat dicocokkan dengan pegawai atau periode, tampilkan sebagai data gagal diproses agar Admin dapat memperbaikinya.
+
+Data hasil impor harus memiliki sumber dan riwayat yang dapat ditelusuri.
+
+### 6. Hasil Penilaian
+
+Tampilkan:
+- Hasil penilaian hasil kerja.
+- Hasil penilaian perilaku.
+- Hasil penilaian kehadiran.
+- Rekapitulasi.
+- Nilai akhir jika formula telah ditetapkan.
+- Predikat jika aturan tersedia.
+- Catatan Penilai.
+- Rekomendasi.
+- Status evaluasi.
+
+### 7. Finalisasi
+
+Fitur:
+- Pemeriksaan kelengkapan.
+- Validasi komponen penilaian.
+- Peringatan jika ada data belum lengkap.
+- Konfirmasi finalisasi.
+- Penyimpanan hasil final.
+- Pencatatan tanggal dan pengguna yang melakukan finalisasi.
+- Riwayat finalisasi.
+- Penguncian data setelah finalisasi.
+
+Data yang sudah final tidak boleh diubah langsung tanpa prosedur koreksi yang sah.
+
+### 8. Riwayat Penilaian
+
+Tampilkan riwayat berdasarkan:
+- Tahun.
+- Semester.
+- Periode.
+- NIP.
+- Nama.
+- Unit kerja.
+- Status.
+- Penilai.
+
+Setiap role hanya dapat melihat riwayat sesuai hak aksesnya.
+
+### 9. Laporan
+
+Sediakan:
+- Laporan per pegawai.
+- Laporan per unit kerja.
+- Laporan per periode.
+- Rekapitulasi seluruh PPPK.
+- Rekapitulasi status evaluasi.
+- Rekapitulasi hasil penilaian.
+- Laporan penilai.
+- Laporan penilai eksternal.
+- Riwayat evaluasi.
+
+Sediakan ekspor Excel dan PDF apabila fasilitas tersebut sudah tersedia atau dapat diintegrasikan dengan pustaka yang digunakan proyek.
+
+### 10. Pengaturan
+
+Khusus Admin atau pengguna yang mendapat izin.
+
+Fitur:
+- Periode evaluasi.
+- Aspek perilaku.
+- Bobot.
+- Aturan penilaian.
+- Komposisi penilai eksternal.
+- Batas waktu.
+- Pengaturan finalisasi.
+- Pengaturan akses.
+- Konfigurasi laporan.
+
+# 8. PERIODE EVALUASI
+
+Evaluasi PPPK dilaksanakan per semester.
+
+Sediakan pengelolaan periode yang fleksibel.
+
+Data periode setidaknya mencakup:
+- ID periode.
+- Tahun.
+- Semester.
+- Nama periode.
+- Tanggal mulai.
+- Tanggal berakhir.
+- Batas pengisian.
+- Status aktif.
+- Status dibuka/ditutup.
+- Keterangan.
+
+Admin dapat:
+- Membuat periode.
+- Mengubah periode.
+- Mengaktifkan periode.
+- Menutup periode.
+- Melihat riwayat periode.
+
+Sistem harus mencegah duplikasi periode yang tidak diperbolehkan.
+
+Data evaluasi lama tidak boleh hilang ketika periode baru dibuat.
+
+Semua penilaian harus terhubung dengan periode yang benar.
+
+# 9. ALUR KERJA EVALUASI
+
+Buat workflow yang terukur dan dapat dipantau.
+
+Urutan operasional:
+
+1. Admin menyiapkan periode evaluasi.
+2. Admin memvalidasi master pegawai dan penempatan PPPK.
+3. Admin menetapkan atau memvalidasi atasan langsung.
+4. Penilai membuka daftar PPPK yang menjadi tanggung jawabnya.
+5. Penilai menetapkan rekan kerja penilai eksternal.
+6. Penilai eksternal menerima tugas.
+7. PPPK mengisi informasi hasil kerja dan bukti dukung sesuai kewenangannya.
+8. Data kehadiran diimpor dan divalidasi.
+9. Penilai memeriksa hasil kerja.
+10. Penilai mengisi penilaian perilaku sesuai kewenangan.
+11. Penilai eksternal mengirim penilaian perilaku.
+12. Sistem menggabungkan komponen penilaian sesuai formula yang telah ditetapkan.
+13. Penilai memeriksa hasil keseluruhan.
+14. Penilai memberikan catatan dan rekomendasi.
+15. Penilai melakukan finalisasi jika berwenang.
+16. Hasil final disimpan dan dikunci.
+17. PPPK dapat melihat hasil yang sudah dipublikasikan.
+18. Admin dapat mengunduh laporan dan memantau seluruh hasil.
+
+Status workflow harus jelas.
+
+Contoh status:
+- Belum dimulai.
+- Menunggu penetapan penilai.
+- Menunggu pengisian PPPK.
+- Menunggu penilaian eksternal.
+- Sedang dinilai.
+- Menunggu pemeriksaan.
+- Perlu perbaikan.
+- Siap finalisasi.
+- Final.
+- Selesai.
+
+Status dapat disesuaikan dengan struktur workflow yang sudah ada.
+
+# 10. MEKANISME KOREKSI DAN PERSETUJUAN
+
+Pertahankan fungsi koreksi yang sudah tersedia.
+
+Gunakan fungsi:
+- `requestCorrection`
+- `approveCorrection`
+
+Alur koreksi:
+1. Pengguna yang berwenang mengajukan koreksi.
+2. Pengguna mencantumkan alasan.
+3. Sistem menyimpan permohonan.
+4. Admin atau pejabat berwenang memeriksa.
+5. Permohonan disetujui atau ditolak.
+6. Jika disetujui, data dibuka sesuai ruang lingkup koreksi.
+7. Setiap perubahan dicatat dalam audit log.
+8. Setelah selesai, data dikunci kembali sesuai status.
+
+Jangan menghapus nilai lama tanpa jejak.
+
+Simpan:
+- Nilai sebelum perubahan.
+- Nilai setelah perubahan.
+- Alasan.
+- Pengaju.
+- Penyetuju.
+- Waktu pengajuan.
+- Waktu persetujuan.
+- Waktu perubahan.
+
+# 11. STRUKTUR DATA DAN DATABASE
+
+Periksa struktur database yang digunakan saat ini.
+
+Jangan langsung mengganti database atau menghapus tabel lama.
+
+Pertahankan kompatibilitas dengan data yang sudah ada.
+
+Gunakan struktur entitas yang sudah tersedia dan sesuaikan seperlunya.
+
+Entitas yang perlu dipastikan tersedia:
+
+### A. Master Pegawai
+
+Identitas harus mengacu pada master pegawai Portal SDM KI.
+
+Field yang relevan:
+- id
+- nip
+- nama
+- jabatan
+- unitKerja
+- bagian
+- subBagian
+- jenisPegawai
+- status
+- data organisasi lain yang tersedia.
+
+Jangan membuat data pegawai ganda.
+
+### B. Periode Evaluasi
+
+Menyimpan periode dan status evaluasi.
+
+### C. Penugasan PPPK
+
+Menyimpan:
+- ID penugasan.
+- ID PPPK.
+- ID Penilai.
+- Unit kerja.
+- Penempatan.
+- Periode.
+- Tanggal berlaku.
+- Status.
+- Pembuat penugasan.
+- Waktu perubahan.
+
+### D. Penugasan Penilai Eksternal
+
+Menyimpan:
+- ID penugasan.
+- ID evaluasi.
+- ID PPPK yang dinilai.
+- ID penilai eksternal.
+- Jenis pegawai penilai.
+- Periode.
+- Status penugasan.
+- Tanggal penunjukan.
+- Status pengiriman.
+- Riwayat persetujuan.
+
+### E. Evaluasi
+
+Menyimpan:
+- ID evaluasi.
+- ID PPPK.
+- ID penilai.
+- ID periode.
+- Status.
+- Nilai hasil kerja.
+- Nilai perilaku.
+- Nilai kehadiran.
+- Nilai akhir jika tersedia.
+- Catatan.
+- Rekomendasi.
+- Status finalisasi.
+
+### F. SKP/RHK
+
+Menyimpan hasil kerja, target, realisasi, indikator, dan bukti dukung sesuai struktur yang sudah ada.
+
+### G. Penilaian Perilaku
+
+Menyimpan:
+- Aspek perilaku.
+- Penilai.
+- Pegawai yang dinilai.
+- Periode.
+- Nilai.
+- Catatan.
+- Status.
+
+### H. Data Kehadiran
+
+Menyimpan:
+- Identitas pegawai.
+- Periode.
+- Data hasil impor.
+- Sumber file.
+- Waktu impor.
+- Status validasi.
+- Riwayat perubahan jika ada.
+
+### I. Permohonan Koreksi
+
+Menyimpan proses pengajuan dan persetujuan koreksi.
+
+### J. Audit Log
+
+Mencatat seluruh tindakan penting.
+
+### K. Pengaturan
+
+Menyimpan konfigurasi periode, bobot, aspek perilaku, komposisi penilai, dan hak akses.
+
+Gunakan ID yang konsisten dan relasi yang jelas.
+
+Jika database menggunakan Google Sheets, pastikan operasi baca/tulis dilakukan melalui backend atau layanan yang aman. Jangan memberikan akses langsung yang memungkinkan pengguna melewati validasi hak akses.
+
+Jika proyek menggunakan database lain, pertahankan teknologi yang sudah digunakan.
+
+# 12. SERVICE DAN FUNGSI LAMA YANG HARUS DIPERTAHANKAN
+
+Periksa dan pertahankan fungsi-fungsi yang sudah ada pada proyek.
+
+Termasuk:
+
+- `initializePPPKEvaluationData`
+- `getEvaluationPeriods`
+- `getPPPKEvaluations`
+- `getBehaviorAspects`
+- `getPPPKSettings`
+- `savePPPKSettings`
+- `getPPPKLogs`
+- `createOrUpdateEvaluation`
+- `recalculateEvaluation`
+- `finalizeEvaluation`
+- `requestCorrection`
+- `approveCorrection`
+- `deleteEvaluation`
+- `saveEvaluationPeriod`
+- `deleteEvaluationPeriod`
+- `saveBehaviorAspect`
+- `deleteBehaviorAspect`
+- `saveBehaviorAssessment`
+- `getPPPKEmployees`
+- `getEvaluationAssignments`
+- `getPenugasanPenilaiList`
+- `getMasterPeriodePenilaian`
+- `saveMasterPeriodePenilaian`
+- `deleteMasterPeriodePenilaian`
+- `getAllEmployees`
+
+Jika ada fungsi yang perlu dipindahkan atau diubah, pertahankan nama, kontrak, dan kompatibilitasnya jika memungkinkan.
+
+Jika memang perlu mengubah API:
+- Periksa semua pemanggil fungsi.
+- Perbarui tipe data.
+- Perbarui komponen terkait.
+- Perbarui validasi.
+- Pastikan data lama tetap dapat dibaca.
+- Jangan meninggalkan fungsi yang tidak lagi bekerja.
+
+Pertahankan fungsi:
+- Dashboard.
+- Daftar evaluasi.
+- Rekap tahunan.
+- Pengelolaan periode.
+- Pengelolaan aspek perilaku.
+- Pengaturan.
+- Evaluasi pribadi.
+- Persetujuan penilaian rekan kerja.
+- Penilaian Ketua Tim.
+- Impor kehadiran.
+- Penugasan penilai.
+- Pengelolaan SKP.
+- Modal detail.
+- Modal edit.
+- Modal konfirmasi.
+- Riwayat.
+- Laporan.
+
+Jangan menghilangkan komponen yang sudah tersedia hanya karena desain aplikasi berubah.
+
+# 13. PEMISAHAN KOMPONEN DAN ROUTING
+
+Susun aplikasi dengan struktur komponen yang mudah dikelola.
+
+Pisahkan:
+- Layout aplikasi Evaluasi PPPK.
+- Halaman login.
+- Dashboard.
+- Komponen navigasi.
+- Komponen berdasarkan role.
+- Komponen penilaian.
+- Komponen laporan.
+- Komponen pengaturan.
+- Komponen modal.
+- Service data.
+- Tipe data.
+- Validasi.
+- Autentikasi.
+- Permission guard.
+
+Pastikan komponen lama yang masih digunakan tetap kompatibel.
+
+Jangan membuat satu file komponen yang terlalu besar.
+
+Gunakan TypeScript secara konsisten.
+
+Pastikan seluruh import dan export benar.
+
+Pastikan tidak ada:
+- Undefined function.
+- Missing import.
+- Type mismatch.
+- State yang tidak digunakan.
+- Routing ganda.
+- Komponen yang tidak ditemukan.
+- Pemanggilan API yang tidak sesuai.
+- Error saat halaman dimuat.
+
+# 14. KEAMANAN DAN PERLINDUNGAN DATA
+
+Modul berisi data kepegawaian dan penilaian kinerja sehingga keamanan harus menjadi prioritas.
+
+Terapkan:
+
+1. Validasi autentikasi.
+2. Validasi role.
+3. Validasi permission.
+4. Validasi identitas pegawai.
+5. Validasi relasi penilai dan PPPK.
+6. Validasi periode.
+7. Validasi kepemilikan data.
+8. Validasi unggahan file.
+9. Audit log.
+10. Pembatasan akses berdasarkan peran.
+
+Jangan mengandalkan `availableTabs` atau penyembunyian menu sebagai sistem keamanan.
+
+Semua permintaan baca, tulis, ubah, hapus, finalisasi, dan koreksi harus diperiksa pada backend.
+
+Jangan memberikan akses kepada pengguna hanya karena mereka mengetahui URL halaman.
+
+Jangan membiarkan pengguna mengubah ID PPPK pada request untuk melihat data orang lain.
+
+Jangan menghapus audit log.
+
+Jangan menyimpan password dalam bentuk teks biasa.
+
+Jangan menaruh secret key atau kredensial backend pada frontend.
+
+Jangan memberikan data seluruh pegawai kepada pengguna yang hanya membutuhkan satu bagian data.
+
+# 15. AUDIT LOG DAN RIWAYAT AKTIVITAS
+
+Pertahankan fungsi `getPPPKLogs` dan seluruh mekanisme pencatatan aktivitas yang sudah ada.
+
+Catat aktivitas:
+- Login.
+- Logout.
+- Penetapan penilai.
+- Perubahan penugasan.
+- Pengisian SKP.
+- Perubahan nilai.
+- Pengisian perilaku.
+- Pengiriman penilaian.
+- Impor kehadiran.
+- Pengajuan koreksi.
+- Persetujuan koreksi.
+- Finalisasi.
+- Perubahan periode.
+- Perubahan konfigurasi.
+- Pengelolaan akun dan hak akses.
+
+Setiap log minimal berisi:
+- ID.
+- Waktu.
+- ID pengguna.
+- Nama pengguna.
+- Role.
+- Aktivitas.
+- Objek yang berubah.
+- Data sebelum perubahan jika relevan.
+- Data setelah perubahan jika relevan.
+- Keterangan.
+
+Audit log tidak boleh dapat diubah oleh pengguna biasa.
+
+# 16. ROLE SIMULATOR
+
+Kode lama memiliki fasilitas simulasi role.
+
+Pertahankan hanya jika masih diperlukan untuk pengujian Superadmin.
+
+Ketentuan:
+- Tidak aktif untuk pengguna biasa.
+- Tidak dapat digunakan untuk mendapatkan hak akses nyata.
+- Tidak mengubah role akun di backend.
+- Tidak mengubah data penugasan.
+- Tidak mengubah audit log seolah-olah tindakan tersebut dilakukan pengguna lain.
+- Tidak boleh menjadi dasar otorisasi.
+- Hanya digunakan dalam lingkungan pengujian yang diizinkan.
+
+Pada aplikasi produksi, role harus ditentukan dari autentikasi dan penugasan resmi.
+
+# 17. IMPOR DATA KEHADIRAN
+
+Fitur impor kehadiran harus tetap tersedia untuk Admin atau pengguna yang diberi kewenangan.
+
+Data kehadiran berasal dari aplikasi absensi lain.
+
+Sistem harus mampu:
+- Menerima file sesuai format yang didukung.
+- Membaca isi file.
+- Mencocokkan NIP.
+- Mencocokkan periode.
+- Mengidentifikasi data ganda.
+- Menampilkan pratinjau.
+- Menampilkan data valid.
+- Menampilkan data gagal.
+- Menampilkan alasan kegagalan.
+- Menyimpan hasil impor.
+- Menyimpan riwayat file sumber.
+
+Sebelum menyimpan data, tampilkan konfirmasi impor.
+
+Jangan menghapus data sebelumnya secara otomatis.
+
+Sediakan mekanisme penggantian atau pembaruan data yang terkontrol.
+
+Jika file tidak dapat dibaca, tampilkan pesan kesalahan yang jelas.
+
+# 18. UI/UX DAN TAMPILAN
+
+Buat antarmuka profesional dengan identitas visual Portal SDM KI.
+
+Gunakan:
+- Sidebar modern.
+- Header ringkas.
+- Kartu statistik.
+- Tabel responsif.
+- Filter.
+- Pencarian.
+- Pagination.
+- Badge status.
+- Modal.
+- Konfirmasi tindakan.
+- Empty state.
+- Loading state.
+- Error state.
+- Notifikasi keberhasilan.
+
+Jangan memenuhi halaman dengan terlalu banyak kartu statistik.
+
+Gunakan warna status yang konsisten:
+- Abu-abu: belum dimulai.
+- Biru: sedang diproses.
+- Kuning: menunggu tindakan.
+- Merah: perlu perbaikan atau bermasalah.
+- Hijau: selesai atau final.
+
+Pastikan:
+- Tampilan desktop optimal.
+- Tampilan tablet tetap nyaman.
+- Tampilan ponsel responsif.
+- Tabel dapat digunakan pada layar kecil.
+- Formulir mudah dipahami.
+- Tombol memiliki fungsi nyata.
+- Navigasi tidak membingungkan.
+
+Jangan menggunakan tombol dekoratif yang tidak menjalankan fungsi.
+
+# 19. NOTIFIKASI
+
+Sediakan notifikasi internal berdasarkan peristiwa penting.
+
+Contoh:
+- Periode evaluasi dibuka.
+- Tugas penilaian diberikan.
+- Penilaian eksternal belum dikirim.
+- Bukti dukung perlu dilengkapi.
+- Evaluasi perlu diperbaiki.
+- Koreksi disetujui.
+- Evaluasi siap difinalisasi.
+- Evaluasi telah selesai.
+
+Notifikasi harus ditujukan kepada pengguna yang relevan berdasarkan penugasan.
+
+Jangan mengirim notifikasi kepada seluruh pegawai tanpa kebutuhan.
+
+# 20. KETENTUAN FORMULA PENILAIAN
+
+Jangan mengarang formula nilai.
+
+Pertahankan formula yang sudah ada jika memang sudah digunakan dan telah disetujui.
+
+Periksa:
+- Perhitungan nilai hasil kerja.
+- Perhitungan nilai perilaku.
+- Perhitungan nilai kehadiran.
+- Bobot setiap komponen.
+- Nilai akhir.
+- Predikat.
+- Pembulatan.
+- Aturan penilaian kosong.
+- Aturan penilaian yang belum lengkap.
+
+Jika formula belum tersedia atau belum jelas:
+1. Jangan membuat formula berdasarkan asumsi.
+2. Buat konfigurasi yang dapat dikelola Admin.
+3. Tandai bagian yang belum ditetapkan.
+4. Jangan mengizinkan finalisasi jika komponen wajib belum ditentukan.
+
+# 21. MIGRASI DAN KOMPATIBILITAS DATA
+
+Data evaluasi yang sudah ada harus tetap aman.
+
+Sebelum mengubah struktur:
+- Periksa tabel atau sheet yang sudah digunakan.
+- Periksa tipe data.
+- Periksa relasi.
+- Periksa ID.
+- Periksa fungsi pembacaan.
+- Periksa fungsi penyimpanan.
+- Periksa data historis.
+
+Jika diperlukan migrasi:
+- Buat migrasi yang tidak merusak data.
+- Pertahankan ID lama.
+- Hindari penghapusan kolom atau tabel yang masih digunakan.
+- Pastikan data lama tetap dapat dibaca.
+- Pastikan aplikasi lama tidak mengalami error akibat perubahan.
+
+Jangan mengisi database dengan data contoh secara otomatis pada lingkungan produksi.
+
+Jika memerlukan data pengujian, pisahkan dari database produksi.
+
+# 22. PENGUJIAN DAN VALIDASI
+
+Lakukan pemeriksaan menyeluruh setelah implementasi.
+
+Pastikan skenario berikut berjalan:
+
+**Skenario 1 — Akses mandiri**
+
+- Pengguna membuka `/EvaluasiPPPK`.
+- Halaman login tampil.
+- Pengguna dapat login.
+- Pengguna diarahkan ke dashboard berdasarkan role.
+
+**Skenario 2 — Admin Portal SDM KI**
+
+- Admin membuka Portal SDM KI.
+- Admin memilih menu Evaluasi PPPK.
+- Modul terbuka pada URL mandiri.
+- Admin dapat mengakses pengelolaan modul.
+
+**Skenario 3 — Editor**
+
+- Editor membuka modul dari Portal.
+- Editor hanya dapat menggunakan fitur yang diizinkan.
+- Editor tidak dapat mengubah permission Admin.
+
+**Skenario 4 — Penilai**
+
+- Penilai hanya melihat PPPK yang ditugaskan kepadanya.
+- Penilai dapat menetapkan rekan kerja.
+- Penilai dapat memeriksa SKP, perilaku, dan kehadiran.
+- Penilai dapat melakukan finalisasi jika memiliki izin.
+
+**Skenario 5 — Penilai eksternal**
+
+- Penilai eksternal hanya melihat tugas yang diberikan.
+- Penilai eksternal dapat mengisi penilaian perilaku.
+- Penilai eksternal tidak dapat mengubah SKP atau finalisasi.
+
+**Skenario 6 — PPPK**
+
+- PPPK hanya melihat evaluasi miliknya sendiri.
+- PPPK dapat mengisi informasi yang menjadi kewenangannya.
+- PPPK tidak dapat mengubah nilai penilai.
+- PPPK tidak dapat melihat data pegawai lain.
+
+**Skenario 7 — Keamanan**
+
+- Pengguna tanpa autentikasi tidak dapat mengakses data.
+- Pengguna tidak dapat mengubah ID untuk membuka data orang lain.
+- Pengguna tidak dapat menaikkan role sendiri.
+- Role simulator tidak memengaruhi izin produksi.
+
+**Skenario 8 — Finalisasi dan koreksi**
+
+- Evaluasi yang belum lengkap tidak dapat difinalisasi.
+- Evaluasi final terkunci.
+- Koreksi harus melalui persetujuan.
+- Seluruh perubahan tercatat dalam audit log.
+
+**Skenario 9 — Data**
+
+- Data pegawai tetap sinkron dengan master Portal.
+- Data periode lama tetap tersedia.
+- Riwayat penilaian tidak hilang.
+- Impor kehadiran dapat divalidasi.
+- Tidak ada data dummy yang masuk ke produksi.
+
+**Skenario 10 — Routing**
+
+- URL `/EvaluasiPPPK` dapat dibuka langsung.
+- Refresh halaman berhasil.
+- Navigasi internal berjalan.
+- Logout berjalan.
+- Portal SDM KI tetap berfungsi normal.
+
+# 23. KRITERIA HASIL AKHIR
+
+Pekerjaan dianggap selesai jika:
+
+1. Modul Evaluasi PPPK telah menjadi aplikasi mandiri.
+2. URL `/EvaluasiPPPK` berfungsi.
+3. Portal SDM KI tetap berjalan normal.
+4. Admin dan Editor dapat membuka modul melalui Portal.
+5. Tiga kelompok pengguna operasional memiliki dashboard masing-masing.
+6. Penentuan Penilai berdasarkan penempatan dan penugasan resmi.
+7. Penilai dapat menunjuk penilai eksternal.
+8. Penilai eksternal hanya dapat mengakses tugasnya.
+9. PPPK hanya dapat mengakses evaluasi miliknya.
+10. Seluruh fitur lama yang masih relevan tetap berjalan.
+11. Data lama tetap aman.
+12. Hak akses divalidasi pada backend.
+13. Audit log berfungsi.
+14. Finalisasi dan koreksi berjalan.
+15. Impor kehadiran berjalan.
+16. Laporan dapat diakses sesuai kewenangan.
+17. Tidak ada identitas pegawai palsu atau role default.
+18. Tidak ada error TypeScript, import, routing, atau fungsi yang hilang.
+19. Tidak ada penggunaan API AI berbayar yang tidak diperlukan.
+20. Tidak ada perubahan yang merusak modul lain.
+
+# 24. INSTRUKSI PELAKSANAAN KEPADA GOOGLE AI STUDIO
+
+Gunakan seluruh file dan kode proyek yang tersedia sebagai sumber utama.
+
+Mulailah dengan memeriksa:
+- Struktur folder.
+- File routing.
+- File autentikasi.
+- File tipe data.
+- File service.
+- File database.
+- Komponen Evaluasi PPPK.
+- Komponen Portal SDM KI.
+- Konfigurasi deployment.
+
+Periksa secara khusus `EvaluasiPPPKPage.tsx` dan seluruh dependensinya.
+
+Jangan berasumsi bahwa nama fungsi atau struktur database yang tertulis dalam prompt pasti sama dengan implementasi aktual. Verifikasi terlebih dahulu terhadap kode proyek.
+
+Setelah memahami struktur yang ada, lakukan perubahan langsung dan menyeluruh sesuai spesifikasi.
+
+Jangan mengganti teknologi yang sudah digunakan tanpa alasan teknis yang kuat.
+
+Jangan membuat implementasi tiruan yang hanya terlihat berfungsi pada frontend.
+
+Jika suatu fungsi membutuhkan perubahan backend, implementasikan pada backend yang tersedia. Jika backend belum mendukung, jelaskan kebutuhan teknisnya dan buat integrasi yang sesuai tanpa memalsukan keberhasilan.
+
+Jangan berhenti setelah membuat halaman login atau dashboard. Seluruh alur operasional harus terhubung dengan data dan hak akses yang sebenarnya.
+
+Jika terdapat konflik antara desain baru dan fungsi lama, prioritaskan:
+1. Keamanan data.
+2. Integritas data.
+3. Keberlangsungan fungsi lama.
+4. Kebutuhan operasional pengguna.
+5. Konsistensi antarmuka.
+
+**HASIL YANG SAYA INGINKAN:**
+
+Modul Evaluasi PPPK yang profesional, mandiri, aman, terintegrasi dengan Portal SDM KI, mempunyai tiga kelompok pengguna operasional yang jelas, serta dapat dikelola oleh Admin dan Editor melalui Portal SDM KI.
+
+Jangan hanya memberikan penjelasan tentang apa yang harus dilakukan. Implementasikan perubahan pada proyek, pastikan seluruh fungsi berjalan, lalu berikan ringkasan file yang diubah, struktur aplikasi, perubahan database/API, konfigurasi deployment, serta hasil pengujian.
+
+Jika ada bagian yang tidak dapat diselesaikan karena keterbatasan akses atau infrastruktur, sebutkan secara spesifik dan jangan menyatakan bahwa fitur tersebut sudah selesai.
