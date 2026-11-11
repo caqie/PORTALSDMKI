@@ -81,9 +81,11 @@ export const EXPECTED_COLUMNS_SCHEMA = {
   SKP: ['ID', 'NIP', 'NAMAPEGAWAI', 'TAHUN', 'PREDIKATKINERJA', 'NILAI', 'ATASANPENILAI', 'FILEURL'],
   PAK: ['ID', 'NIP', 'NAMAPEGAWAI', 'NOMOR', 'JUMLAHKREDIT', 'PERIODE', 'TANGGALSK'],
   KENAIKAN: ['ID', 'NIP', 'NAMAPEGAWAI', 'DARI', 'MENJADI', 'STATUS', 'PERIODE', 'TANGGALTMT'],
-  PENGEMBANGAN: ['ID', 'NIP', 'NAMAPEGAWAI', 'NAMAKEGIATAN', 'JENISPENGEMBANGAN', 'KATEGORI', 'JUMLAHJPL', 'TAHUN', 'PENYELENGGARA', 'NOMORSERTIFIKAT', 'FILESERTIFIKATURL'],
   KGB: ['ID', 'NIP', 'NAMAPEGAWAI', 'TMTLAMA', 'TMTBARU', 'GAJIBARU', 'STATUS', 'NOMORSK', 'TANGGALSK', 'MASAKERJATAHUN', 'MASAKERJABULAN'],
-  TUGAS_RUTIN: ['ID', 'TIMESTAMP', 'BULAN', 'TAHUN', 'JENIS', 'DATA'],
+  KGB_MASTER_PNS: ['ID', 'GOLONGAN', 'RUANG', 'MKG', 'GAJIPOKOK', 'SUMBERREGULASI', 'STATUSDATA', 'VERSIDATA', 'TANGGALPEMBARUAN', 'KETERANGAN'],
+  KGB_MASTER_PPPK: ['ID', 'GOLONGAN', 'MKG', 'GAJIPOKOK', 'SUMBERREGULASI', 'STATUSDATA', 'VERSIDATA', 'TANGGALPEMBARUAN', 'KETERANGAN'],
+  KGB_MAPPING_GOLONGAN: ['ID', 'GOLONGANASLI', 'STATUSPEGAWAI', 'GOLONGANHASILPEMETAAN', 'SUMBERPEMETAAN', 'STATUSVERIFIKASI', 'KETERANGAN', 'UPDATEDAT'],
+  KGB_AUDIT_LOG: ['ID', 'TIMESTAMP', 'USERNIP', 'USERNAME', 'ACTION', 'KGBID', 'DETAILS', 'BEFOREDATA', 'AFTERDATA'],
   KEGIATAN: ['ID', 'JUDULKEGIATAN', 'TANGGAL', 'TEMPAT', 'STATUS', 'DESKRIPSI', 'PENANGGUNGJAWAB', 'PESERTA'],
   ABK_ANJAB: ['ID', 'NAMAJABATAN', 'KODEJABATAN', 'UNITKERJA', 'JENISJABATAN', 'KELASJABATAN', 'KEBUTUHANPEGAWAI', 'JUMLAHSAATINI', 'IKHTISARJABATAN', 'PENDIDIKANFORMAL', 'DIKLAT', 'PENGALAMANKERJA', 'URAIANTUGAS'],
   PELANTIKAN: ['ID', 'NOMOR', 'ASNNIP', 'TANGGALPELANTIKAN', 'JABATANBARU', 'DATA'],
@@ -1253,7 +1255,7 @@ export const fetchTableData = async <T>(gidKey: keyof typeof DEFAULT_GIDS, stora
 
     if (lines.length < 1) return [];
     
-    const headers = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/^"|"$/g, '').replace(/""/g, '"').trim().toUpperCase().replace(/[\s_.]/g, ''));
+    const headers = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/^"|"$/g, '').replace(/""/g, '"').trim().toUpperCase().replace(/[\s_.\-]/g, ''));
     
     const result = lines.slice(1).map(line => {
         const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
@@ -1350,12 +1352,14 @@ export const fetchTableData = async <T>(gidKey: keyof typeof DEFAULT_GIDS, stora
 
 export const mapPegawaiCols = (cols: string[], headers: string[]): Pegawai | null => {
     const get = (k: string) => { 
-      const i = headers.indexOf(k.toUpperCase().replace(/[\s_.]/g, '')); 
-      return (i !== -1 && cols[i]) ? cols[i] : ''; 
+      const cleanK = k.toUpperCase().replace(/[\s_.\-]/g, '');
+      const i = headers.indexOf(cleanK); 
+      return (i !== -1 && cols[i]) ? cols[i].trim() : ''; 
     };
     const getLast = (k: string) => { 
-      const i = headers.lastIndexOf(k.toUpperCase().replace(/[\s_.]/g, '')); 
-      return (i !== -1 && cols[i]) ? cols[i] : ''; 
+      const cleanK = k.toUpperCase().replace(/[\s_.\-]/g, '');
+      const i = headers.lastIndexOf(cleanK); 
+      return (i !== -1 && cols[i]) ? cols[i].trim() : ''; 
     };
     const getJson = (k: string) => { try { const v = get(k); return v ? JSON.parse(v) : []; } catch(e) { return []; } };
     
@@ -1391,9 +1395,9 @@ export const mapPegawaiCols = (cols: string[], headers: string[]): Pegawai | nul
       jabatan: get('JABATAN') || get('NAMAJABATAN') || get('JAB'), 
       jenisJabatan: rawJenisJabatanAN || rawJenisJabatanN || get('TIPEJABATAN') || get('KATEGORIJABATAN'),
       klasifikasiJabatan: rawJenisJabatanAN || get('KLASIFIKASIJABATAN') || (cols[14] ? cols[14].trim() : ''),
-      subBagian: get('SUBBAGIAN') || get('SUB_BAGIAN'), 
-      bagian: get('BAGIAN'),
-      unitKerja: get('UNITKERJA') || get('UNIT_KERJA') || 'DJKI', 
+      subBagian: get('SUBBAGIAN') || get('SUB_BAGIAN') || get('SUBBAG') || get('SEKSI') || get('SUB_BAG'), 
+      bagian: get('BAGIAN') || get('BIDANG') || get('SUBDIREKTORAT') || get('SUBDIT'),
+      unitKerja: get('UNITKERJA') || get('UNIT_KERJA') || get('SATUANKERJA') || get('SATKER') || get('DIREKTORAT') || get('UNIT') || 'DJKI', 
       gender: (() => {
         const g = (get('GENDER') || get('JENISKELAMIN') || get('JK') || get('LP') || '').toUpperCase();
         if (g === 'P' || g.startsWith('PEREMPUAN') || g === 'WANITA' || g === 'W') return 'P';
@@ -1407,6 +1411,7 @@ export const mapPegawaiCols = (cols: string[], headers: string[]): Pegawai | nul
         return raw.toUpperCase();
       })(), 
       jenisPegawai: get('JENISPEGAWAI') || get('KATEGORIPEG') || get('TYPE'), 
+      statusPegawai: (get('STATUSPEGAWAI') || get('STATUS_PEGAWAI') || get('STATUSKEPEGAWAIAN') || get('JENISPEGAWAI') || 'PNS').trim(),
       status: (() => {
         const rawStatus = (get('STATUS') || get('STATUSPEGAWAI') || '').trim();
         if (!rawStatus) return 'Aktif';
@@ -1628,7 +1633,25 @@ export const fetchKGBFromSheets = (bypassCache = false) => fetchTableData<KGB>('
       golonganBaru: get('GOLONGANBARU'),
       masaPerjanjianKerja: get('MASAPERJANJIANKERJA'),
       perpanjanganPerjanjianKerja: get('PERPANJANGANPERJANJIANKERJA'),
-      jenisPegawai: get('JENISPEGAWAI') as any
+      jenisPegawai: (get('JENISPEGAWAI') || 'PNS') as any,
+      statusPegawai: get('STATUSPEGAWAI') || get('STATUS_PEGAWAI') || get('JENISPEGAWAI') || 'PNS',
+      golonganAsli: get('GOLONGANASLI') || get('PANGKATGOL'),
+      golonganDipakai: get('GOLONGANDIPAKAI') || get('GOLONGANBARU'),
+      statusVerifikasiGolongan: (get('STATUSVERIFIKASIGOLONGAN') || 'Valid PNS') as any,
+      sumberTabelGaji: get('SUMBERTABELGAJI'),
+      versiMasterGaji: get('VERSIMASTERGAJI'),
+      isManualSalary: get('ISMANUALSALARY') === 'true' || get('ISMANUALSALARY') === '1',
+      mkgLama: parseInt(get('MKGLAMA') || get('MASAKERJATAHUN')) || 0,
+      mkgBaru: parseInt(get('MKGBARU')) || 0,
+      selisihGaji: parseFloat(get('SELISIHGAJI')) || 0,
+      catatanValidasi: get('CATATANVALIDASI'),
+      createdAt: get('CREATEDAT'),
+      createdByNip: get('CREATEDBYNIP'),
+      createdByName: get('CREATEDBYNAME'),
+      updatedAt: get('UPDATEDAT'),
+      updatedByNip: get('UPDATEDBYNIP'),
+      updatedByName: get('UPDATEDBYNAME'),
+      catatanPersetujuan: get('CATATANPERSETUJUAN')
     } as KGB;
 }, bypassCache);
 

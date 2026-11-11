@@ -1392,6 +1392,19 @@ export const formatNip = (nip?: string): string => {
 };
 
 /**
+ * Format NIP dengan spasi resmi (contoh: 19960412 202521 2 022)
+ * Sesuai standar BKN: 8 digit tanggal lahir + 6 digit TMT + 1 digit JK + 3 digit urut
+ */
+export const formatNipWithSpaces = (nip?: string): string => {
+  if (!nip) return '-';
+  const clean = String(nip).replace(/\D/g, '').trim();
+  if (clean.length === 18) {
+    return `${clean.substring(0, 8)} ${clean.substring(8, 14)} ${clean.substring(14, 15)} ${clean.substring(15, 18)}`;
+  }
+  return String(nip).trim();
+};
+
+/**
  * Resolusi otomatis Pendidikan berdasarkan Gelar
  */
 export const resolveEducationInfo = (input: string): { bidang: string, jenjang: string, display: string } | null => {

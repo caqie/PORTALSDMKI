@@ -4,7 +4,7 @@ import { Pegawai, Dossier } from '../types';
 import { fetchPegawaiFromSheets, savePegawai, syncTableRemote, fetchDossiersFromSheets, uploadFileToDrive, findPegawaiByNip, parseDateToYYYYMMDD } from '../spreadsheetService';
 import { useAuth } from '../AuthContext';
 import { getPhotoUrl, formatDrivePhotoUrl, compressImage } from '../lib/photoUtils';
-import { normalizeUnitName, UNIT_KERJA, ORGANISASI_STRUCTURE, PANGKAT_MAP, DEFAULT_LOGO, BANK_LIST, formatPegawaiName, polishGelarDanNama, getJabatanClassification, resolvePegawaiPendidikanDanJurusan, normalizeJenjangLabel } from '../constants';
+import { normalizeUnitName, UNIT_KERJA, ORGANISASI_STRUCTURE, PANGKAT_MAP, DEFAULT_LOGO, BANK_LIST, formatPegawaiName, polishGelarDanNama, getJabatanClassification, resolvePegawaiPendidikanDanJurusan, normalizeJenjangLabel, formatNipWithSpaces } from '../constants';
 import { LOGO_PENGAYOMAN_URL } from '../assets/branding';
 import SuccessModal from '../components/SuccessModal';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -17,6 +17,8 @@ import { getAtasanLangsung, getAllPegawaiForNode, PopulatedOrganisasiNode } from
 // @ts-ignore
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { sanitizeForExcel, sanitizeExcelRows, safeJsonToSheet, safeWriteExcel } from '../lib/excelSanitizer';
 import { 
   OFFICIAL_PETA_JABATAN_ABK, 
@@ -1562,10 +1564,247 @@ const PegawaiPage = () => {
     };
   };
 
-  const handleExportExcel = (type: 'SHARE' | 'FULL') => {
+  const handleExportDataShareExcel = async (structuredList: any[]) => {
     try {
-      const wb = XLSX.utils.book_new();
-      
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Portal SDM DJKI';
+      wb.created = new Date();
+
+      // Helper unit matchers prioritizing raw database unitKerja
+      const isDitHCDI = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[1] || u.includes('cipta') || u.includes('hcdi') || u.includes('desain industri');
+      };
+
+      const isDitPaten = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[2] || u.includes('paten') || u.includes('dtlst') || u.includes('sirkuit terpadu') || u.includes('rahasia dagang');
+      };
+
+      const isDitMIG = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[3] || u.includes('merek') || u.includes('merk') || u.includes('mig') || u.includes('indikasi geografis');
+      };
+
+      const isDitKSPE = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[4] || u.includes('kerjasama') || u.includes('kerja sama') || u.includes('kspe') || u.includes('pemberdayaan') || u.includes('edukasi');
+      };
+
+      const isDitTIKI = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[5] || u.includes('teknologi informasi') || /\b(ti|tik|tiki)\b/i.test(u) || u.includes('tiki') || u.includes('sistem informasi');
+      };
+
+      const isDitGakum = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[6] || u.includes('penegakan hukum') || u.includes('gakum') || u.includes('gakkum') || u.includes('sengketa') || u.includes('penyidikan');
+      };
+
+      const isSekretariat = (item: any) => {
+        const u = (item.pegawai.unitKerja || item.struct.unitKerja || '').toLowerCase();
+        const b = (item.pegawai.bagian || item.struct.bagian || '').toLowerCase();
+        const j = (item.pegawai.jabatan || '').toLowerCase();
+        const norm = normalizeUnitName(u, b, j);
+        return norm === UNIT_KERJA[0] || norm === 'Pimpinan DJKI' || u.includes('sekretariat') || u.includes('sesdit') || u.includes('pimpinan') || (!isDitHCDI(item) && !isDitPaten(item) && !isDitMIG(item) && !isDitKSPE(item) && !isDitTIKI(item) && !isDitGakum(item));
+      };
+
+      // 11 Sheets in exact order from screenshot
+      const sheetConfigs = [
+        { name: 'ALL', filter: () => true },
+        { 
+          name: 'PNS', 
+          filter: (item: any) => {
+            const jp = (item.pegawai.jenisPegawai || '').toUpperCase();
+            return jp.includes('PNS') && !jp.includes('PPPK');
+          }
+        },
+        { 
+          name: 'PPPK', 
+          filter: (item: any) => {
+            const jp = (item.pegawai.jenisPegawai || '').toUpperCase();
+            return jp.includes('PPPK') && !jp.includes('PW') && !jp.includes('PARUH');
+          }
+        },
+        { 
+          name: 'PPPK PW', 
+          filter: (item: any) => {
+            const jp = (item.pegawai.jenisPegawai || '').toUpperCase();
+            return jp.includes('PW') || jp.includes('PARUH');
+          }
+        },
+        { name: 'SEKRETARIAT', filter: isSekretariat },
+        { name: 'DIT MIG', filter: isDitMIG },
+        { name: 'DIT PATEN', filter: isDitPaten },
+        { name: 'DIT HCDI', filter: isDitHCDI },
+        { name: 'DIT GAKUM', filter: isDitGakum },
+        { name: 'DIT KSPE', filter: isDitKSPE },
+        { name: 'DIT TIKI', filter: isDitTIKI }
+      ];
+
+      // Columns definition exactly as shown in screenshot
+      const baseColumns = [
+        { header: 'No.', key: 'no', width: 6 },
+        { header: 'NIP', key: 'nip', width: 28 },
+        { header: 'NAMA', key: 'nama', width: 36 },
+        { header: 'sub bagian', key: 'subBagian', width: 30 },
+        { header: 'bagian', key: 'bagian', width: 30 },
+        { header: 'unit kerja', key: 'unitKerja', width: 38 },
+        { header: 'GOL_RUANG', key: 'golRuang', width: 14 },
+        { header: 'jenisPegawai', key: 'jenisPegawai', width: 16 },
+        { header: 'JABATAN', key: 'jabatan', width: 40 }
+      ];
+
+      sheetConfigs.forEach(cfg => {
+        const filteredItems = structuredList.filter(cfg.filter);
+
+        const ws = wb.addWorksheet(cfg.name, {
+          views: [{ state: 'frozen', xSplit: 0, ySplit: 1, activeCell: 'A2' }]
+        });
+
+        // Set columns with initial widths
+        ws.columns = baseColumns.map(c => ({
+          header: c.header,
+          key: c.key,
+          width: c.width
+        }));
+
+        // Style the Header Row (Rich blue background, bold white text, middle center alignment)
+        const headerRow = ws.getRow(1);
+        headerRow.height = 28;
+        headerRow.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF2E75B6' } // Corporate Steel Blue from screenshot
+          };
+          cell.font = {
+            name: 'Calibri',
+            size: 11,
+            bold: true,
+            color: { argb: 'FFFFFFFF' }
+          };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+            wrapText: false
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF1F4E79' } },
+            left: { style: 'thin', color: { argb: 'FF1F4E79' } },
+            bottom: { style: 'thin', color: { argb: 'FF1F4E79' } },
+            right: { style: 'thin', color: { argb: 'FF1F4E79' } }
+          };
+        });
+
+        // Populate and format Data Rows
+        filteredItems.forEach((item, idx) => {
+          const p = item.pegawai;
+          const s = item.struct;
+          const properJabatan = resolveProperJabatan(p, s) || p.jabatan || '-';
+
+          // Strictly use raw database spreadsheet values for subBagian, bagian, and unitKerja
+          const rowData = {
+            no: idx + 1,
+            nip: formatNipWithSpaces(p.nip),
+            nama: formatPegawaiName(p.nama || '-'),
+            subBagian: (p.subBagian !== undefined && p.subBagian !== null) ? String(p.subBagian).trim() : '',
+            bagian: (p.bagian !== undefined && p.bagian !== null) ? String(p.bagian).trim() : '',
+            unitKerja: (p.unitKerja !== undefined && p.unitKerja !== null && String(p.unitKerja).trim() !== '') ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI'),
+            golRuang: p.golRuang || p.golongan || '',
+            jenisPegawai: p.jenisPegawai || 'PNS',
+            jabatan: (p.jabatan && p.jabatan.trim() !== '' && p.jabatan !== '-') ? p.jabatan.trim() : (properJabatan || '')
+          };
+
+          const dataRow = ws.addRow(rowData);
+          dataRow.height = 21;
+
+          dataRow.eachCell((cell, colNumber) => {
+            cell.font = {
+              name: 'Calibri',
+              size: 10,
+              color: { argb: 'FF000000' }
+            };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+              left: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+              bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+              right: { style: 'thin', color: { argb: 'FFD9D9D9' } }
+            };
+
+            // Alignment:
+            // No., NIP, GOL_RUANG, jenisPegawai -> Center
+            // NAMA, sub bagian, bagian, unit kerja, JABATAN -> Left
+            if (colNumber === 1 || colNumber === 2 || colNumber === 7 || colNumber === 8) {
+              cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            } else {
+              cell.alignment = { vertical: 'middle', horizontal: 'left' };
+            }
+
+            // Treat NIP explicitly as text to prevent scientific notation
+            if (colNumber === 2) {
+              cell.numFmt = '@';
+            }
+          });
+        });
+
+        // Auto-fit column widths with padding so no cell is truncated
+        ws.columns.forEach((col: any) => {
+          let maxLen = (col.header ? String(col.header).length : 10);
+          filteredItems.forEach((item, idx) => {
+            const p = item.pegawai;
+            const s = item.struct;
+            let val = '';
+            if (col.key === 'no') val = String(idx + 1);
+            else if (col.key === 'nip') val = formatNipWithSpaces(p.nip);
+            else if (col.key === 'nama') val = formatPegawaiName(p.nama || '');
+            else if (col.key === 'subBagian') val = (p.subBagian ? String(p.subBagian).trim() : '');
+            else if (col.key === 'bagian') val = (p.bagian ? String(p.bagian).trim() : '');
+            else if (col.key === 'unitKerja') val = (p.unitKerja ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI'));
+            else if (col.key === 'golRuang') val = p.golRuang || p.golongan || '';
+            else if (col.key === 'jenisPegawai') val = p.jenisPegawai || '';
+            else if (col.key === 'jabatan') val = (p.jabatan && p.jabatan !== '-') ? p.jabatan : (resolveProperJabatan(p, s) || '');
+
+            if (val && val.length > maxLen) {
+              maxLen = val.length;
+            }
+          });
+          col.width = Math.max(col.width || 12, Math.min(maxLen + 4, 75));
+        });
+
+        // Add auto-filter on headers
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 9 } };
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Data_Share_Pegawai_DJKI_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err: any) {
+      console.error("Gagal melakukan ekspor data share pegawai ke Excel:", err);
+      alert(`Gagal mengekspor file Excel: ${err?.message || 'Terjadi kesalahan sistem'}`);
+    }
+  };
+
+  const handleExportExcel = async (type: 'SHARE' | 'FULL') => {
+    try {
       // Filter data for export: exclude 'Tidak Aktif' and 'Pensiun' if not searching
       const rawExportPegawai = searchTerm.trim() === '' 
         ? filteredPegawai.filter(p => p.status !== 'Tidak Aktif' && p.status !== 'Pensiun')
@@ -1575,32 +1814,10 @@ const PegawaiPage = () => {
       const structuredList = sortPegawaiByUnitStructureHierarchy(rawExportPegawai, true);
 
       if (type === 'SHARE') {
-        const data = structuredList.map((item, index) => {
-          const p = item.pegawai;
-          const s = item.struct;
-          return {
-            'No': index + 1,
-            'NIP': p.nip || '-',
-            'Nama Lengkap': formatPegawaiName(p.nama || '-'),
-            'Unit Kerja': s.unitKerja || '-',
-            'Bagian / Subdirektorat': s.bagian || '-',
-            'Subbagian / Seksi': s.subBagian || '-',
-            'Nama Jabatan': resolveProperJabatan(p, s),
-            'Klasifikasi Jabatan': s.hier.kategori,
-            'Kelas Jabatan': getKelasJabatanPermenkumham38(resolveProperJabatan(p, s), p.eselon, p.golRuang) || s.hier.kelasJabatan,
-            'Eselon': p.eselon || s.hier.eselonTier,
-            'Pangkat / Golongan': `${p.pangkat || '-'} (${p.golRuang || '-'})`,
-            'Status Kepegawaian': p.jenisPegawai || 'PNS',
-            'Status Pegawai': p.status || 'Aktif',
-            'Pendidikan Terakhir': p.pendidikan || '-',
-            'Jurusan / Prodi': p.jurusan || '-',
-            'Kedudukan Hierarki': s.kedudukanHierarki,
-            'Atasan Langsung': s.atasanLangsung
-          };
-        });
-        const ws = XLSX.utils.json_to_sheet(sanitizeExcelRows(data));
-        XLSX.utils.book_append_sheet(wb, ws, "Daftar Pegawai (Ringkas)");
+        await handleExportDataShareExcel(structuredList);
+        return;
       } else {
+        const wb = XLSX.utils.book_new();
         // 1. Sheet 1: Peta Jabatan ABK Resmi (Sesuai Dokumen DJKI 1.074 Pegawai - Hal 1-7)
         const wsAbk = buildPetaJabatanAbkSheet();
         XLSX.utils.book_append_sheet(wb, wsAbk, "Peta Jabatan ABK (Resmi)");
@@ -1904,9 +2121,9 @@ const PegawaiPage = () => {
             XLSX.utils.book_append_sheet(wb, wsUnit, sheetName);
           }
         });
+
+        safeWriteExcel(wb, `Data_Pegawai_DJKI_${type}_PetaJabatanStruktur_${Date.now()}.xlsx`);
       }
-      
-      safeWriteExcel(wb, `Data_Pegawai_DJKI_${type}_PetaJabatanStruktur_${Date.now()}.xlsx`);
     } catch (err: any) {
       console.error("Gagal melakukan ekspor data ke Excel:", err);
       alert(`Gagal mengekspor file Excel: ${err?.message || 'Terjadi kesalahan sistem'}`);
@@ -2356,7 +2573,15 @@ const PegawaiPage = () => {
              <span className="hidden xs:inline">Sync Cloud</span>
              <span className="xs:hidden">Sync</span>
            </button>
-           <button onClick={() => handleExportExcel('SHARE')} className="h-10 md:h-14 px-3 md:px-6 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl md:rounded-2xl font-black text-[8px] md:text-[10px] uppercase hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2" title="Unduh Data Pegawai Ringkas (Terstruktur Per Unit: Direktur -> Eselon III -> Eselon IV -> JF & Pelaksana)"><i className="bi bi-file-earmark-spreadsheet-fill text-base md:text-lg"></i> <span className="hidden xs:inline">Share</span><span className="xs:hidden">Shr</span></button>
+           <button 
+             onClick={() => handleExportExcel('SHARE')} 
+             className="h-10 md:h-14 px-3 md:px-6 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-xl md:rounded-2xl font-black text-[8px] md:text-[10px] uppercase hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm" 
+             title="Unduh Data Share Pegawai (.xlsx) - Multi-Sheet (ALL, PNS, PPPK, PPPK PW, & 7 Direktorat/Unit) dengan format tabel dan lebar kolom rapi"
+           >
+             <i className="bi bi-file-earmark-spreadsheet-fill text-base md:text-lg"></i> 
+             <span className="hidden xs:inline">Data Share</span>
+             <span className="xs:hidden">Share</span>
+           </button>
            <button onClick={downloadOfficialPetaJabatanExcel} className="h-10 md:h-14 px-3 md:px-5 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black text-[8px] md:text-[10px] uppercase shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2" title="Unduh Dokumen Resmi Peta Jabatan ABK (1.074 Pegawai) & Formasi SIMPEG Eselon I DJKI Kemenkumham RI"><i className="bi bi-diagram-2-fill text-base md:text-lg"></i> <span className="hidden xs:inline">Peta Jabatan (Resmi)</span><span className="xs:hidden">Peta</span></button>
            {canEdit && (<button onClick={() => handleExportExcel('FULL')} className="h-10 md:h-14 px-3 md:px-6 bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black text-[8px] md:text-[10px] uppercase shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-2" title="Unduh Database Lengkap dengan Peta Jabatan ABK Resmi (1.074 Pegawai), Formasi SIMPEG, Peta Jabatan Struktur, Rekapitulasi Bezetting, dan Sheet Khusus Seluruh 7 Direktorat/Unit"><i className="bi bi-diagram-3-fill text-base md:text-lg"></i> <span className="hidden xs:inline">Full + Peta Jabatan</span><span className="xs:hidden">Full</span></button>)}
            {canEdit && (

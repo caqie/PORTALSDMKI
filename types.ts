@@ -380,6 +380,63 @@ export interface ABKAnjab {
   korelasiJabatanList?: any[];
 }
 
+export type KGBStatusAlur = 
+  | 'Draft'
+  | 'Menunggu Verifikasi'
+  | 'Dalam Proses'
+  | 'Menunggu Persetujuan'
+  | 'Disetujui'
+  | 'Selesai'
+  | 'Ditolak';
+
+export interface KGBMasterGajiPNS {
+  id: string;
+  golongan: string; // 'I' | 'II' | 'III' | 'IV'
+  ruang: string; // 'a' | 'b' | 'c' | 'd' | 'e'
+  mkg: number;
+  gajiPokok: number;
+  sumberRegulasi: string; // "PP Nomor 5 Tahun 2024"
+  statusData: 'Aktif' | 'Nonaktif';
+  versiData: string;
+  tanggalPembaruan?: string;
+  keterangan?: string;
+}
+
+export interface KGBMasterGajiPPPK {
+  id: string;
+  golongan: string; // 'I' s.d. 'XVII'
+  mkg: number;
+  gajiPokok: number;
+  sumberRegulasi: string; // "Perpres Nomor 11 Tahun 2024"
+  statusData: 'Aktif' | 'Nonaktif';
+  versiData: string;
+  tanggalPembaruan?: string;
+  keterangan?: string;
+}
+
+export interface KGBGolonganMapping {
+  id: string;
+  golonganAsli: string; // Golongan dari database pegawai, misal 'III/a', 'IX', 'Ahli Pertama'
+  statusPegawai: 'PPPK';
+  golonganHasilPemetaan: string; // Golongan PPPK resmi: 'I' s.d. 'XVII'
+  sumberPemetaan: string; // Dokumen/dasar resmi, misal 'PermenPANRB No. 72 Tahun 2020'
+  statusVerifikasi: 'Terverifikasi' | 'Belum Terverifikasi';
+  keterangan?: string;
+  updatedAt?: string;
+}
+
+export interface KGBAuditLog {
+  id: string;
+  timestamp: string;
+  userNip: string;
+  userName: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE' | 'MASTER_CHANGE' | 'MAPPING_CHANGE' | 'DOSSIER_UPLOAD' | 'APPROVAL';
+  kgbId?: string;
+  details: string;
+  beforeData?: any;
+  afterData?: any;
+}
+
 export interface KGB { 
   id: string; 
   nip: string; 
@@ -390,7 +447,7 @@ export interface KGB {
   gajiBaru: number; 
   nomorSk: string; 
   tglSk: string; 
-  status: 'Proses' | 'Selesai'; 
+  status: KGBStatusAlur | 'Proses' | 'Selesai'; 
   pjbNama?: string; 
   pjbNip?: string; 
   pjbJabatan?: string;
@@ -417,6 +474,26 @@ export interface KGB {
   masaPerjanjianKerja?: string;
   perpanjanganPerjanjianKerja?: string;
   jenisPegawai?: 'PNS' | 'PPPK';
+
+  // Audit, Status Pegawai & Snapshot fields
+  statusPegawai?: string;
+  golonganAsli?: string;
+  golonganDipakai?: string;
+  statusVerifikasiGolongan?: 'Terverifikasi' | 'Belum Terverifikasi' | 'Valid PNS';
+  sumberTabelGaji?: string;
+  versiMasterGaji?: string;
+  isManualSalary?: boolean;
+  mkgLama?: number;
+  mkgBaru?: number;
+  selisihGaji?: number;
+  catatanValidasi?: string;
+  createdAt?: string;
+  createdByNip?: string;
+  createdByName?: string;
+  updatedAt?: string;
+  updatedByNip?: string;
+  updatedByName?: string;
+  catatanPersetujuan?: string;
 }
 export interface Dossier { id: string; nip: string; namaPegawai: string; tanggal: string; keterangan: string; fileName: string; fileUrl?: string; }
 export interface TugasRutin { id: string; timestamp: string; bulan: string; tahun: number; jenis: TaskType; detail: string; data?: any; }
