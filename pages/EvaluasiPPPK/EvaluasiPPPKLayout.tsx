@@ -75,7 +75,6 @@ export const EvaluasiPPPKLayout: React.FC<EvaluasiPPPKLayoutProps> = ({
           chipColor: 'bg-blue-600',
           icon: 'bi-award-fill'
         };
-      case 'PENILAI_EKSTERNAL':
       case 'REKAN_PNS':
       case 'PNS_PENILAI':
         return {
@@ -125,7 +124,6 @@ export const EvaluasiPPPKLayout: React.FC<EvaluasiPPPKLayoutProps> = ({
           { id: 'laporan', label: 'Laporan & Dokumen', icon: 'bi-file-earmark-pdf-fill' }
         ];
 
-      case 'PENILAI_EKSTERNAL':
       case 'REKAN_PNS':
       case 'PNS_PENILAI':
       case 'REKAN_PPPK':

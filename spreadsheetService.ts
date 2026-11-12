@@ -1352,13 +1352,26 @@ export const fetchTableData = async <T>(gidKey: keyof typeof DEFAULT_GIDS, stora
 
 export const mapPegawaiCols = (cols: string[], headers: string[]): Pegawai | null => {
     const get = (k: string) => { 
-      const cleanK = k.toUpperCase().replace(/[\s_.\-]/g, '');
-      const i = headers.indexOf(cleanK); 
+      const cleanK = k.toUpperCase().replace(/[\s_.\-/()]/g, '');
+      let i = headers.findIndex(h => h.replace(/[\s_.\-/()]/g, '') === cleanK);
+      if (i === -1) {
+        i = headers.findIndex(h => {
+          const normH = h.replace(/[\s_.\-/()]/g, '');
+          return normH === cleanK || normH.startsWith(cleanK) || (cleanK.length >= 4 && (normH.includes(cleanK) || cleanK.includes(normH)));
+        });
+      }
       return (i !== -1 && cols[i]) ? cols[i].trim() : ''; 
     };
     const getLast = (k: string) => { 
-      const cleanK = k.toUpperCase().replace(/[\s_.\-]/g, '');
-      const i = headers.lastIndexOf(cleanK); 
+      const cleanK = k.toUpperCase().replace(/[\s_.\-/()]/g, '');
+      let i = -1;
+      for (let idx = headers.length - 1; idx >= 0; idx--) {
+        const normH = headers[idx].replace(/[\s_.\-/()]/g, '');
+        if (normH === cleanK || normH.startsWith(cleanK) || (cleanK.length >= 4 && (normH.includes(cleanK) || cleanK.includes(normH)))) {
+          i = idx;
+          break;
+        }
+      }
       return (i !== -1 && cols[i]) ? cols[i].trim() : ''; 
     };
     const getJson = (k: string) => { try { const v = get(k); return v ? JSON.parse(v) : []; } catch(e) { return []; } };

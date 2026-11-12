@@ -1726,8 +1726,8 @@ const PegawaiPage = () => {
             no: idx + 1,
             nip: formatNipWithSpaces(p.nip),
             nama: formatPegawaiName(p.nama || '-'),
-            subBagian: (p.subBagian !== undefined && p.subBagian !== null) ? String(p.subBagian).trim() : '',
-            bagian: (p.bagian !== undefined && p.bagian !== null) ? String(p.bagian).trim() : '',
+            subBagian: (p.subBagian !== undefined && p.subBagian !== null && String(p.subBagian).trim() !== '') ? String(p.subBagian).trim() : (s.subBagian || ''),
+            bagian: (p.bagian !== undefined && p.bagian !== null && String(p.bagian).trim() !== '') ? String(p.bagian).trim() : (s.bagian && s.bagian !== 'Pimpinan Unit' ? s.bagian : ''),
             unitKerja: (p.unitKerja !== undefined && p.unitKerja !== null && String(p.unitKerja).trim() !== '') ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI'),
             golRuang: p.golRuang || p.golongan || '',
             jenisPegawai: p.jenisPegawai || 'PNS',
@@ -1776,9 +1776,9 @@ const PegawaiPage = () => {
             if (col.key === 'no') val = String(idx + 1);
             else if (col.key === 'nip') val = formatNipWithSpaces(p.nip);
             else if (col.key === 'nama') val = formatPegawaiName(p.nama || '');
-            else if (col.key === 'subBagian') val = (p.subBagian ? String(p.subBagian).trim() : '');
-            else if (col.key === 'bagian') val = (p.bagian ? String(p.bagian).trim() : '');
-            else if (col.key === 'unitKerja') val = (p.unitKerja ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI'));
+            else if (col.key === 'subBagian') val = (p.subBagian && String(p.subBagian).trim() !== '') ? String(p.subBagian).trim() : (s.subBagian || '');
+            else if (col.key === 'bagian') val = (p.bagian && String(p.bagian).trim() !== '') ? String(p.bagian).trim() : (s.bagian && s.bagian !== 'Pimpinan Unit' ? s.bagian : '');
+            else if (col.key === 'unitKerja') val = (p.unitKerja && String(p.unitKerja).trim() !== '') ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI');
             else if (col.key === 'golRuang') val = p.golRuang || p.golongan || '';
             else if (col.key === 'jenisPegawai') val = p.jenisPegawai || '';
             else if (col.key === 'jabatan') val = (p.jabatan && p.jabatan !== '-') ? p.jabatan : (resolveProperJabatan(p, s) || '');

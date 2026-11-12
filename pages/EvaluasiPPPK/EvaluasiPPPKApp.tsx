@@ -162,7 +162,7 @@ export const EvaluasiPPPKApp: React.FC = () => {
     // 2. Pejabat Penilai Kinerja (Atasan Langsung)
     // Strictly derived from assignments database where user is assigned as pejabatPenilaiId
     const hasAssignedPppk = assignments.some(a => 
-      a && ((a.pejabatPenilaiId && a.pejabatPenilaiId === userNip) || (a.pejabatPenilaiNip && a.pejabatPenilaiNip === userNip))
+      a && ((a.pejabatPenilaiId && a.pejabatPenilaiId === userNip) || ((a as any).pejabatPenilaiNip && (a as any).pejabatPenilaiNip === userNip))
     );
     if (hasAssignedPppk) {
       roles.push('PEJABAT_PENILAI');
@@ -172,20 +172,20 @@ export const EvaluasiPPPKApp: React.FC = () => {
     // Strictly derived from employee category or being the subject pppkDinilaiId in assignments
     const isPppkEmployee = Boolean(
       (realPegawai?.jenisPegawai || (realPegawai as any)?.status || '').toUpperCase().includes('PPPK') ||
-      assignments.some(a => a && ((a.pppkDinilaiId && a.pppkDinilaiId === userNip) || (a.pppkDinilaiNip && a.pppkDinilaiNip === userNip)))
+      assignments.some(a => a && ((a.pppkDinilaiId && a.pppkDinilaiId === userNip) || ((a as any).pppkDinilaiNip && (a as any).pppkDinilaiNip === userNip)))
     );
     if (isPppkEmployee) {
       roles.push('PPPK_DINILAI');
     }
 
     // 4. Penilai Eksternal (Rekan Kerja PNS)
-    const isRekanPns = assignments.some(a => a && ((a.rekanPnsId && a.rekanPnsId === userNip) || (a.rekanPnsNip && a.rekanPnsNip === userNip)));
+    const isRekanPns = assignments.some(a => a && ((a.rekanPnsId && a.rekanPnsId === userNip) || ((a as any).rekanPnsNip && (a as any).rekanPnsNip === userNip)));
     if (isRekanPns) {
       roles.push('PNS_PENILAI');
     }
 
     // 5. Penilai Eksternal (Rekan Kerja PPPK)
-    const isRekanPppk = assignments.some(a => a && ((a.rekanPppkId && a.rekanPppkId === userNip) || (a.rekanPppkNip && a.rekanPppkNip === userNip)));
+    const isRekanPppk = assignments.some(a => a && ((a.rekanPppkId && a.rekanPppkId === userNip) || ((a as any).rekanPppkNip && (a as any).rekanPppkNip === userNip)));
     if (isRekanPppk) {
       roles.push('PPPK_PENILAI');
     }
@@ -405,11 +405,9 @@ export const EvaluasiPPPKApp: React.FC = () => {
           selectedPeriod={currentPeriod}
           selectedPeriodId={selectedPeriodId}
           assignments={assignments}
-          selectedAssignmentId={selectedAssignmentId}
-          preselectedAssignmentId={selectedAssignmentId}
-          onNavigateNext={(id) => {
+          onNavigateTab={(tabKey?: string, id?: string) => {
             if (id) setSelectedAssignmentId(id);
-            handleSelectTab('hasil-penilaian');
+            handleSelectTab((tabKey as any) || 'hasil-penilaian');
           }}
           onRefreshData={refreshAllData}
           onRefreshAll={refreshAllData}
@@ -426,9 +424,13 @@ export const EvaluasiPPPKApp: React.FC = () => {
           assignments={assignments}
           selectedAssignmentId={selectedAssignmentId}
           preselectedAssignmentId={selectedAssignmentId}
-          onNavigateNext={(id) => {
+          onNavigateToFinalisasi={(id?: string) => {
             if (id) setSelectedAssignmentId(id);
             handleSelectTab('finalisasi');
+          }}
+          onNavigateTab={(tabKey?: string, id?: string) => {
+            if (id) setSelectedAssignmentId(id);
+            handleSelectTab((tabKey as any) || 'finalisasi');
           }}
           onRefreshData={refreshAllData}
           onRefreshAll={refreshAllData}
@@ -465,12 +467,13 @@ export const EvaluasiPPPKApp: React.FC = () => {
         <PPPKRiwayatPenilaianTab
           activeRole={activeRole}
           activePegawai={activePegawai}
-          selectedPeriod={currentPeriod}
-          selectedPeriodId={selectedPeriodId}
+          periods={enterprisePeriods}
           assignments={assignments}
-          onRefreshData={refreshAllData}
-          onRefreshAll={refreshAllData}
-          showToast={showToast}
+          onSelectPeriod={(pid: string) => setSelectedPeriodId(pid)}
+          onNavigateTab={(tabKey?: string, id?: string) => {
+            if (id) setSelectedAssignmentId(id);
+            if (tabKey) handleSelectTab(tabKey as any);
+          }}
         />
       )}
 
@@ -481,7 +484,8 @@ export const EvaluasiPPPKApp: React.FC = () => {
           selectedPeriod={currentPeriod}
           selectedPeriodId={selectedPeriodId}
           assignments={assignments}
-          allEmployees={allEmployees}
+          selectedAssignmentId={selectedAssignmentId}
+          preselectedAssignmentId={selectedAssignmentId}
           onRefreshData={refreshAllData}
           onRefreshAll={refreshAllData}
           showToast={showToast}
@@ -493,8 +497,6 @@ export const EvaluasiPPPKApp: React.FC = () => {
           activeRole={activeRole}
           activePegawai={activePegawai}
           periods={enterprisePeriods}
-          selectedPeriodId={selectedPeriodId}
-          onChangePeriod={(pid) => setSelectedPeriodId(pid)}
           onRefreshData={refreshAllData}
           onRefreshAll={refreshAllData}
           showToast={showToast}

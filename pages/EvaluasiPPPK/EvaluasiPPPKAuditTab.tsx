@@ -15,10 +15,11 @@ export const EvaluasiPPPKAuditTab: React.FC = () => {
     return logs.filter(log => {
       const matchSearch = 
         !search ||
-        (log.actorName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (log.userName || (log as any).actorName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (log.userId || '').includes(search) ||
         (log.action || '').toLowerCase().includes(search.toLowerCase()) ||
-        (log.details || '').toLowerCase().includes(search.toLowerCase()) ||
-        (log.targetNip || '').includes(search);
+        (log.remarks || log.keterangan || (log as any).details || '').toLowerCase().includes(search.toLowerCase()) ||
+        (log.recordId || (log as any).targetNip || '').includes(search);
       
       const matchAction = filterAction === 'ALL' || log.action === filterAction;
       return matchSearch && matchAction;
@@ -116,8 +117,8 @@ export const EvaluasiPPPKAuditTab: React.FC = () => {
                       {log.timestamp}
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="font-bold text-slate-900">{log.actorName || 'Sistem'}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">NIP: {log.actorNip || '-'}</div>
+                      <div className="font-bold text-slate-900">{log.userName || (log as any).actorName || 'Sistem'}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">ID/NIP: {log.userId || (log as any).actorNip || '-'}</div>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -125,14 +126,14 @@ export const EvaluasiPPPKAuditTab: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="font-medium text-slate-800">{log.targetName || '-'}</div>
-                      {log.targetNip && (
-                        <div className="text-[10px] text-slate-500 font-mono">NIP: {log.targetNip}</div>
+                      <div className="font-medium text-slate-800">{log.targetDoc || (log as any).targetName || log.module || '-'}</div>
+                      {log.recordId && (
+                        <div className="text-[10px] text-slate-500 font-mono">ID: {log.recordId}</div>
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-slate-600 max-w-md">
                       <div className="font-medium text-slate-700 line-clamp-2">
-                        {log.details || '-'}
+                        {log.remarks || log.keterangan || (log as any).details || (log.oldValue ? `${log.oldValue} ➔ ${log.newValue}` : '-')}
                       </div>
                     </td>
                   </tr>

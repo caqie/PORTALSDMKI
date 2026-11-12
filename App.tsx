@@ -54,7 +54,13 @@ import AttendanceSettingsPage from './pages/Admin/AttendanceSettingsPage';
 import TupoksiSDMPage from './pages/TupoksiSDMPage';
 import TubelIbelPage from './pages/TubelIbelPage';
 import EvaluasiPPPKPage from './pages/EvaluasiPPPKPage';
+import EvaluasiPPPKApp from './pages/EvaluasiPPPK/EvaluasiPPPKApp';
 import CatPPPKLoginPage from './pages/CatPPPKLoginPage';
+
+export const isEvaluasiPppkPath = (path: string): boolean => {
+  const p = (path || '').toLowerCase();
+  return p === '/evaluasipppk' || p.startsWith('/evaluasipppk/') || p === '/evaluasi-pppk' || p.startsWith('/evaluasi-pppk/');
+};
 import CatPPPKDashboardPage from './pages/CatPPPKDashboardPage';
 import CatPPPKExamPage from './pages/CatPPPKExamPage';
 import CatPPPKResultPage from './pages/CatPPPKResultPage';
@@ -204,8 +210,9 @@ const AppContent = () => {
     };
   }, [user]);
 
-  // Mode Ujian Terisolasi (Strict Mode)
+  // Mode Ujian Terisolasi (Strict Mode) & Standalone Evaluasi PPPK
   const isUkomStrict = window.location.pathname.includes('ukomdjki') || window.location.search.includes('portal=ukom');
+  const isEvaluasiPppkStrict = isEvaluasiPppkPath(window.location.pathname) || window.location.search.includes('portal=evaluasipppk');
 
   const loadSystemConfig = async () => {
     try {
@@ -331,6 +338,11 @@ const AppContent = () => {
     );
   }
 
+  // Standalone Integrated Evaluasi PPPK Application (Direct URL & Custom Layout)
+  if (isEvaluasiPppkStrict || isEvaluasiPppkPath(location.pathname)) {
+    return <EvaluasiPPPKApp />;
+  }
+
   if (!isAuthenticated && !location.pathname.startsWith('/ukom') && !location.pathname.startsWith('/quizdjki') && location.pathname !== '/login') return <Navigate to="/login" replace />;
   if (location.pathname === '/login' && isAuthenticated) {
     if (isOnlyAdminUangMakan) {
@@ -373,6 +385,9 @@ const AppContent = () => {
 
     // Dashboard root is always accessible to all authenticated users
     if (path === '/') return true;
+
+    // Standalone Evaluasi PPPK is open to all authenticated users (internal RBAC manages permissions)
+    if (isEvaluasiPppkPath(path)) return true;
 
     // Strict Superadmin-only pages
     if (['/settings', '/logs'].includes(path)) return isSuperadmin || hasRole('Superadmin');
@@ -422,7 +437,9 @@ const AppContent = () => {
       '/pensiun',
       '/satya-lencana',
       '/magang-pkl',
-      '/pengembangan'
+      '/pengembangan',
+      '/EvaluasiPPPK',
+      '/evaluasi-pppk'
     ];
 
     if (employeeSelfServicePaths.includes(path) || path.startsWith('/pegawai/')) {
@@ -534,6 +551,18 @@ const AppContent = () => {
         <Route path="*" element={<Navigate to="/cat-pppk/login" replace />} />
       </Routes>
     );
+  }
+
+  // Standalone Evaluasi PPPK Layout (Runs full screen with its own dedicated sidebar, header, role switcher, and login)
+  if (isEvaluasiPppkPath(location.pathname)) {
+    if (isPageInMaintenance(location.pathname) && !isSuperadmin) {
+      return (
+        <div className="h-screen w-full flex items-center justify-center bg-gray-50">
+          <MaintenanceView />
+        </div>
+      );
+    }
+    return <EvaluasiPPPKApp />;
   }
 
   return (
@@ -670,7 +699,7 @@ const AppContent = () => {
                     <SidebarItem to="/tupoksi-sdm" icon="bi-kanban-fill" label="Tupoksi Sub-Tim 3" active={location.pathname === '/tupoksi-sdm'} collapsed={isCollapsed} />
                     <SidebarItem to="/kgb-gen" icon="bi-calculator-fill" label="Generator SK KGB" active={location.pathname === '/kgb-gen'} collapsed={isCollapsed} />
                     <SidebarItem to="/kenaikan-pangkat" icon="bi-award-fill" label="Modul Kenaikan Pangkat" active={location.pathname === '/kenaikan-pangkat'} collapsed={isCollapsed} />
-                    <SidebarItem to="/evaluasi-pppk" icon="bi-card-checklist" label="Evaluasi PPPK" active={location.pathname === '/evaluasi-pppk'} collapsed={isCollapsed} />
+                    <SidebarItem to="/EvaluasiPPPK" icon="bi-card-checklist" label="Evaluasi PPPK" active={isEvaluasiPppkPath(location.pathname)} collapsed={isCollapsed} />
                     <SidebarItem to="/tugas-rutin" icon="bi-clipboard2-check-fill" label="Log Tugas Rutin" active={location.pathname.startsWith('/tugas-rutin')} collapsed={isCollapsed} />
                   </>
                 ) : activeRole === 'Admin Perencanaan & Layanan' || activeRole === 'Admin Perencanaan' ? (
@@ -759,7 +788,7 @@ const AppContent = () => {
                       badgeColor={userSdmBadge.isUrgent ? 'bg-amber-500' : 'bg-blue-600'}
                     />
                     <SidebarItem to="/dossiers" icon="bi-folder-fill" label="E-Dossier Digital" active={location.pathname === '/dossiers'} collapsed={isCollapsed} />
-                    <SidebarItem to="/evaluasi-pppk" icon="bi-award-fill" label="Evaluasi PPPK" active={location.pathname.startsWith('/evaluasi-pppk')} collapsed={isCollapsed} />
+                    <SidebarItem to="/EvaluasiPPPK" icon="bi-award-fill" label="Evaluasi PPPK" active={isEvaluasiPppkPath(location.pathname)} collapsed={isCollapsed} />
                     <SidebarItem to="/cat-pppk/login" icon="bi-pc-display" label="CAT Evaluasi PPPK" active={location.pathname.startsWith('/cat-pppk')} collapsed={isCollapsed} target="_blank" />
                     <SidebarItem to="/ukom/login" icon="bi-pencil-square" label="Portal Ujian CAT" active={location.pathname.startsWith('/ukom')} collapsed={isCollapsed} target="_blank" />
 
@@ -796,7 +825,7 @@ const AppContent = () => {
                       badgePulse={userSdmBadge.isUrgent}
                     />
                     <SidebarItem to="/dossiers" icon="bi-folder-fill" label="E-Dossier Digital" active={location.pathname === '/dossiers'} collapsed={isCollapsed} />
-                    <SidebarItem to="/evaluasi-pppk" icon="bi-award-fill" label="Evaluasi PPPK" active={location.pathname.startsWith('/evaluasi-pppk')} collapsed={isCollapsed} />
+                    <SidebarItem to="/EvaluasiPPPK" icon="bi-award-fill" label="Evaluasi PPPK" active={isEvaluasiPppkPath(location.pathname)} collapsed={isCollapsed} />
                     <SidebarItem to="/cat-pppk/login" icon="bi-pc-display" label="CAT Evaluasi PPPK" active={location.pathname.startsWith('/cat-pppk')} collapsed={isCollapsed} target="_blank" />
                     <SidebarItem to="/ukom/login" icon="bi-pencil-square" label="Portal Ujian CAT" active={location.pathname.startsWith('/ukom')} collapsed={isCollapsed} target="_blank" />
                   </>
@@ -828,12 +857,12 @@ const AppContent = () => {
                   />
                 )}
 
-                {hasAccess('/evaluasi-pppk') && (
+                {(hasAccess('/evaluasi-pppk') || hasAccess('/EvaluasiPPPK')) && (
                   <SidebarItem 
-                    to="/evaluasi-pppk" 
+                    to="/EvaluasiPPPK" 
                     icon="bi-award-fill" 
                     label="Evaluasi PPPK" 
-                    active={location.pathname.startsWith('/evaluasi-pppk')} 
+                    active={isEvaluasiPppkPath(location.pathname)} 
                     collapsed={isCollapsed} 
                   />
                 )}
@@ -1054,9 +1083,10 @@ const AppContent = () => {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/logs" element={<ActivityLogPage />} />
                     <Route path="/absensi-online" element={<AbsensiOnlinePage />} />
-                    <Route path="/rekap-absensi" element={<RekapAbsensiPage />} />
-                    <Route path="/uang-makan" element={<UangMakanPage />} />
-                    <Route path="/evaluasi-pppk" element={<EvaluasiPPPKPage />} />
+                    <Route path="/evaluasi-pppk/*" element={<EvaluasiPPPKApp />} />
+                    <Route path="/evaluasi-pppk" element={<EvaluasiPPPKApp />} />
+                    <Route path="/EvaluasiPPPK/*" element={<EvaluasiPPPKApp />} />
+                    <Route path="/EvaluasiPPPK" element={<EvaluasiPPPKApp />} />
                     <Route path="/skp" element={<SKPPage />} />
                     <Route path="/pak" element={<PAKPage />} />
                     <Route path="/anjab-abk" element={<ABKAnjabPage />} />
@@ -1115,6 +1145,7 @@ const App = () => {
   const urlPath = window.location.pathname;
   const urlSearch = window.location.search;
   const isUkomStrict = urlPath.includes('ukomdjki') || urlSearch.includes('portal=ukom');
+  const isEvaluasiPppkStrict = isEvaluasiPppkPath(urlPath) || urlSearch.includes('portal=evaluasipppk');
   let initialPath = sessionStorage.getItem('portal_last_path') || '/';
   
   if (urlPath.startsWith('/quizdjki') || urlSearch.includes('pin=')) {
@@ -1122,6 +1153,9 @@ const App = () => {
     sessionStorage.setItem('portal_last_path', initialPath);
   } else if (isUkomStrict) {
     initialPath = '/ukom/login';
+  } else if (isEvaluasiPppkStrict) {
+    initialPath = urlPath || '/EvaluasiPPPK';
+    sessionStorage.setItem('portal_last_path', initialPath);
   } else {
     // Cek apakah ada permintaan akses langsung (untuk tab baru)
     const directAccess = localStorage.getItem('portal_direct_access');

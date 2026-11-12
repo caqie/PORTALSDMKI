@@ -178,8 +178,8 @@ export const EvaluasiPPPKCorrectionTab: React.FC<EvaluasiPPPKCorrectionTabProps>
                 {correctionList.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="font-bold text-slate-900">{item.employeeName || item.employeeId}</div>
-                      <div className="text-[11px] text-slate-500">NIP: {item.employeeNip || item.employeeId}</div>
+                      <div className="font-bold text-slate-900">{item.nama || (item as any).employeeName || item.employeeId}</div>
+                      <div className="text-[11px] text-slate-500">NIP: {item.employeeId}</div>
                     </td>
                     <td className="px-5 py-4 font-semibold text-slate-600">
                       {item.periodId}
