@@ -247,6 +247,9 @@ export const EvaluasiPPPKApp: React.FC = () => {
   };
 
   const handleReturnToPortal = () => {
+    try {
+      sessionStorage.setItem('portal_last_path', '/');
+    } catch (e) {}
     window.location.href = '/';
   };
 
@@ -268,6 +271,10 @@ export const EvaluasiPPPKApp: React.FC = () => {
     return (
       <EvaluasiPPPKLoginPage
         onSuccessLogin={() => {
+          try {
+            window.history.replaceState(null, '', '/EvaluasiPPPK');
+          } catch (e) {}
+          refreshAllData();
           showToast('Berhasil masuk ke Sistem Evaluasi Kinerja PPPK DJKI.', 'success');
         }}
         onReturnToPortal={handleReturnToPortal}
@@ -278,16 +285,42 @@ export const EvaluasiPPPKApp: React.FC = () => {
   // Active period entity
   const currentPeriod = enterprisePeriods.find(p => p.id === selectedPeriodId) || enterprisePeriods[0];
 
-  // Count pending items
-  const pendingCorrections = getPPPKEvaluations().filter(e => e.status === 'CORRECTION_REQUESTED').length;
-  const pendingAssignments = assignments.filter(a => a.status === 'MENUNGGU_VERIFIKASI').length;
+  // Count pending items safely
+  const safeEvaluations = getPPPKEvaluations() || [];
+  const pendingCorrections = Array.isArray(safeEvaluations)
+    ? safeEvaluations.filter(e => e && e.status === 'CORRECTION_REQUESTED').length
+    : 0;
+  const pendingAssignments = Array.isArray(assignments)
+    ? assignments.filter(a => a && a.status === 'MENUNGGU_VERIFIKASI').length
+    : 0;
+
+  // Only Administrator or Editor can return to Portal SDM
+  const isAdministratorOrEditor = Boolean(
+    isUserSuperadmin ||
+    user?.role === 'Admin SDM' ||
+    user?.role === 'Admin' ||
+    user?.role === 'Administrator' ||
+    user?.role === 'Editor' ||
+    (Array.isArray(user?.roles) && (
+      user.roles.includes('Superadmin') ||
+      user.roles.includes('Admin SDM') ||
+      user.roles.includes('Admin') ||
+      user.roles.includes('Editor') ||
+      user.roles.includes('Admin Perencanaan & Layanan') ||
+      user.roles.includes('Admin Pengelolaan Karier') ||
+      user.roles.includes('Admin Pengembangan Kompetensi')
+    ))
+  );
 
   return (
     <EvaluasiPPPKLayout
       activeRole={activeRole}
       activePegawai={activePegawai}
       realRoles={realRoles}
-      onSelectRole={(r) => setSelectedRealRole(r)}
+      onSelectRole={(r) => {
+        setSelectedRealRole(r);
+        handleSelectTab('dashboard');
+      }}
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       periods={enterprisePeriods}
@@ -295,6 +328,7 @@ export const EvaluasiPPPKApp: React.FC = () => {
       onChangePeriod={(pid) => setSelectedPeriodId(pid)}
       onLogout={handleLogout}
       onReturnToPortal={handleReturnToPortal}
+      canReturnToPortal={isAdministratorOrEditor}
       pendingCorrectionCount={pendingCorrections}
       pendingAssignmentCount={pendingAssignments}
       isSimulationActive={isSimulationActive}

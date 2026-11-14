@@ -340,7 +340,7 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
                                 ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                 : 'bg-slate-100 text-slate-700'
                             }`}>
-                              {a.status === 'FINAL' ? 'FINAL' : a.status.replace(/_/g, ' ')}
+                              {a.status === 'FINAL' ? 'FINAL' : (a.status || '-').replace(/_/g, ' ')}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center font-black">
@@ -471,7 +471,7 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
                           <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
                             a.status === 'FINAL' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
                           }`}>
-                            {a.status.replace(/_/g, ' ')}
+                            {(a.status || '-').replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -510,7 +510,7 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
       )}
 
       {/* 3. PPPK DINILAI VIEW: "STATUS EVALUASI KINERJA SAYA" */}
-      {activeRole === 'PPPK_DINILAI' && (
+      {(activeRole === 'PPPK_DINILAI' || activeRole === 'PPPK') && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl p-6 shadow-md">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -602,14 +602,14 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
       )}
 
       {/* 4. PNS PENILAI & 5. PPPK PENILAI VIEW */}
-      {(activeRole === 'PNS_PENILAI' || activeRole === 'PPPK_PENILAI') && (
+      {(activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS' || activeRole === 'PPPK_PENILAI' || activeRole === 'REKAN_PPPK') && (
         <div className="space-y-6">
           <div className="bg-white p-5 rounded-2xl border border-teal-200 shadow-sm bg-gradient-to-r from-teal-50/50 to-white">
             <div className="flex items-center gap-2">
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white ${
-                activeRole === 'PNS_PENILAI' ? 'bg-teal-600' : 'bg-purple-600'
+                (activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS') ? 'bg-teal-600' : 'bg-purple-600'
               }`}>
-                {activeRole === 'PNS_PENILAI' ? 'Rekan Kerja PNS (Bobot 20%)' : 'Rekan Kerja PPPK (Bobot 20%)'}
+                {(activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS') ? 'Rekan Kerja PNS (Bobot 20%)' : 'Rekan Kerja PPPK (Bobot 20%)'}
               </span>
               <span className="text-xs text-slate-500 font-bold">Penilaian Objektif & Rahasia</span>
             </div>
@@ -622,10 +622,10 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(activeRole === 'PNS_PENILAI' ? myPnsTasks : myPppkPeerTasks).map(t => {
+            {((activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS') ? myPnsTasks : myPppkPeerTasks).map(t => {
               let doc: any = null;
               try {
-                const roleKey = activeRole === 'PNS_PENILAI' ? 'PNS_PENILAI' : 'PPPK_PENILAI';
+                const roleKey = (activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS') ? 'PNS_PENILAI' : 'PPPK_PENILAI';
                 doc = getPenilaianPerilakuDoc(t.id, roleKey);
               } catch {
                 doc = null;
@@ -651,7 +651,7 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span className="text-slate-500">28 Soal BerAKHLAK</span>
                     <strong className="text-slate-800 font-mono">
-                      {isSubmitted ? `Skor: ${doc?.rataRataScore?.toFixed(2) || '0.00'} / 5.00` : 'Belum diisi'}
+                      {isSubmitted ? `Skor: ${Number(doc?.rataRataScore || 0).toFixed(2)} / 5.00` : 'Belum diisi'}
                     </strong>
                   </div>
 
@@ -660,7 +660,7 @@ export const PPPKDashboardTab: React.FC<PPPKDashboardTabProps> = ({
                     className={`w-full py-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 ${
                       isSubmitted
                         ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        : activeRole === 'PNS_PENILAI'
+                        : (activeRole === 'PNS_PENILAI' || activeRole === 'REKAN_PNS')
                         ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-900/20'
                         : 'bg-purple-600 text-white hover:bg-purple-700 shadow-md shadow-purple-900/20'
                     }`}

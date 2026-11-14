@@ -1660,17 +1660,17 @@ const PegawaiPage = () => {
         { name: 'DIT TIKI', filter: isDitTIKI }
       ];
 
-      // Columns definition exactly as shown in screenshot
+      // Columns definition exactly as requested: No. | NIP | NAMA | JABATAN | sub bagian | bagian | unit kerja | GOL_RUANG | jenisPegawai
       const baseColumns = [
         { header: 'No.', key: 'no', width: 6 },
         { header: 'NIP', key: 'nip', width: 28 },
         { header: 'NAMA', key: 'nama', width: 36 },
+        { header: 'JABATAN', key: 'jabatan', width: 40 },
         { header: 'sub bagian', key: 'subBagian', width: 30 },
         { header: 'bagian', key: 'bagian', width: 30 },
         { header: 'unit kerja', key: 'unitKerja', width: 38 },
         { header: 'GOL_RUANG', key: 'golRuang', width: 14 },
-        { header: 'jenisPegawai', key: 'jenisPegawai', width: 16 },
-        { header: 'JABATAN', key: 'jabatan', width: 40 }
+        { header: 'jenisPegawai', key: 'jenisPegawai', width: 16 }
       ];
 
       sheetConfigs.forEach(cfg => {
@@ -1726,12 +1726,12 @@ const PegawaiPage = () => {
             no: idx + 1,
             nip: formatNipWithSpaces(p.nip),
             nama: formatPegawaiName(p.nama || '-'),
+            jabatan: (p.jabatan && p.jabatan.trim() !== '' && p.jabatan !== '-') ? p.jabatan.trim() : (properJabatan || ''),
             subBagian: (p.subBagian !== undefined && p.subBagian !== null && String(p.subBagian).trim() !== '') ? String(p.subBagian).trim() : (s.subBagian || ''),
             bagian: (p.bagian !== undefined && p.bagian !== null && String(p.bagian).trim() !== '') ? String(p.bagian).trim() : (s.bagian && s.bagian !== 'Pimpinan Unit' ? s.bagian : ''),
             unitKerja: (p.unitKerja !== undefined && p.unitKerja !== null && String(p.unitKerja).trim() !== '') ? String(p.unitKerja).trim() : (s.unitKerja || 'DJKI'),
             golRuang: p.golRuang || p.golongan || '',
-            jenisPegawai: p.jenisPegawai || 'PNS',
-            jabatan: (p.jabatan && p.jabatan.trim() !== '' && p.jabatan !== '-') ? p.jabatan.trim() : (properJabatan || '')
+            jenisPegawai: p.jenisPegawai || 'PNS'
           };
 
           const dataRow = ws.addRow(rowData);
@@ -1751,9 +1751,9 @@ const PegawaiPage = () => {
             };
 
             // Alignment:
-            // No., NIP, GOL_RUANG, jenisPegawai -> Center
-            // NAMA, sub bagian, bagian, unit kerja, JABATAN -> Left
-            if (colNumber === 1 || colNumber === 2 || colNumber === 7 || colNumber === 8) {
+            // No., NIP, GOL_RUANG, jenisPegawai -> Center (columns 1, 2, 8, 9)
+            // NAMA, JABATAN, sub bagian, bagian, unit kerja -> Left (columns 3, 4, 5, 6, 7)
+            if (colNumber === 1 || colNumber === 2 || colNumber === 8 || colNumber === 9) {
               cell.alignment = { vertical: 'middle', horizontal: 'center' };
             } else {
               cell.alignment = { vertical: 'middle', horizontal: 'left' };

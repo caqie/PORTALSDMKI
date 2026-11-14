@@ -12,6 +12,7 @@ import {
   tetapkanRekanKerjaGanda,
   getPenugasanPenilaiList,
   getMasterPeriods,
+  savePenugasanPenilai,
   updatePenugasanPenilai,
   deletePenugasanPenilai,
   resetRekanKerja
@@ -107,6 +108,16 @@ export const PPPKPenetapanPenilaiTab: React.FC<PPPKPenetapanPenilaiTabProps> = (
   const [rejectReason, setRejectReason] = useState<string>('');
   const [verifModalOpen, setVerifModalOpen] = useState<boolean>(false);
   const [verifTarget, setVerifTarget] = useState<PPPKPenugasanPenilai | null>(null);
+
+  // Add Assignment Modal/State (for Admin & Pejabat Penilai)
+  const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
+  const [addPppkNip, setAddPppkNip] = useState<string>('');
+  const [addJenisPejabat, setAddJenisPejabat] = useState<PPPKJenisPejabatPenilai>('KETUA_TIM_KERJA');
+  const [addPejabatNip, setAddPejabatNip] = useState<string>('');
+  const [addPnsNip, setAddPnsNip] = useState<string>('');
+  const [addPppkPeerNip, setAddPppkPeerNip] = useState<string>('');
+  const [addAtasanNip, setAddAtasanNip] = useState<string>('');
+  const [addInitialStatus, setAddInitialStatus] = useState<PPPKPenugasanPenilai['status']>('DISETUJUI');
 
   // Edit Assignment Modal/State (for Admin & Pejabat Penilai)
   const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
@@ -252,6 +263,115 @@ export const PPPKPenetapanPenilaiTab: React.FC<PPPKPenetapanPenilaiTabProps> = (
       }
     } catch (err: any) {
       safeShowToast(err.message, 'error');
+    }
+  };
+
+  // Handle Save New Assignment (Admin / Pejabat Penilai)
+  const handleSaveAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!effectivePeriod) {
+      safeShowToast('Periode evaluasi tidak aktif.', 'error');
+      return;
+    }
+
+    if (!addPppkNip) {
+      safeShowToast('Silakan pilih Pegawai PPPK yang akan dinilai.', 'error');
+      return;
+    }
+
+    if (!addPejabatNip) {
+      safeShowToast('Silakan pilih Pejabat Penilai Kinerja.', 'error');
+      return;
+    }
+
+    const targetPppk = effectiveAllPegawai.find(p => p.nip === addPppkNip);
+    const targetPejabat = effectiveAllPegawai.find(p => p.nip === addPejabatNip);
+    const targetPns = addPnsNip ? effectiveAllPegawai.find(p => p.nip === addPnsNip) : undefined;
+    const targetPppkPeer = addPppkPeerNip ? effectiveAllPegawai.find(p => p.nip === addPppkPeerNip) : undefined;
+    const targetAtasan = addAtasanNip ? effectiveAllPegawai.find(p => p.nip === addAtasanNip) : undefined;
+
+    if (!targetPppk || !targetPejabat) {
+      safeShowToast('Data pegawai atau pejabat penilai tidak valid.', 'error');
+      return;
+    }
+
+    try {
+      const assignmentId = `ASSIGN-${effectivePeriod.year}-${effectivePeriod.semester}-${targetPppk.nip}`;
+      const now = new Date().toLocaleString('id-ID');
+
+      let finalStatus = addInitialStatus;
+      if (targetPns && targetPppkPeer) {
+        finalStatus = 'DALAM_PENILAIAN';
+      }
+
+      const newAssignment: PPPKPenugasanPenilai = {
+        id: assignmentId,
+        periodeId: effectivePeriod.id,
+        year: effectivePeriod.year,
+        semester: effectivePeriod.semester,
+        pppkDinilaiId: targetPppk.nip,
+        pppkNama: targetPppk.nama,
+        pppkNip: targetPppk.nip,
+        pppkJabatan: targetPppk.jabatan,
+        pppkUnitKerja: targetPppk.unitKerja,
+        pppkPangkat: targetPppk.pangkat || 'Golongan IX / Ahli Pertama',
+        jenisPejabatPenilai: addJenisPejabat,
+        pejabatPenilaiId: targetPejabat.nip,
+        pejabatPenilaiNama: targetPejabat.nama,
+        pejabatPenilaiNip: targetPejabat.nip,
+        pejabatPenilaiJabatan: targetPejabat.jabatan,
+        pejabatPenilaiUnit: targetPejabat.unitKerja,
+        pejabatPenilaiPangkat: targetPejabat.pangkat || 'Pembina (IV/a)',
+        rekanPnsId: targetPns?.nip,
+        rekanPnsNama: targetPns?.nama,
+        rekanPnsNip: targetPns?.nip,
+        rekanPnsJabatan: targetPns?.jabatan,
+        rekanPnsUnit: targetPns?.unitKerja,
+        rekanPppkId: targetPppkPeer?.nip,
+        rekanPppkNama: targetPppkPeer?.nama,
+        rekanPppkNip: targetPppkPeer?.nip,
+        rekanPppkJabatan: targetPppkPeer?.jabatan,
+        rekanPppkUnit: targetPppkPeer?.unitKerja,
+        atasanPejabatPenilaiId: targetAtasan?.nip,
+        atasanPejabatPenilaiNama: targetAtasan?.nama,
+        atasanPejabatPenilaiNip: targetAtasan?.nip,
+        atasanPejabatPenilaiJabatan: targetAtasan?.jabatan,
+        atasanPejabatPenilaiPangkat: targetAtasan?.pangkat,
+        atasanPejabatPenilaiUnit: targetAtasan?.unitKerja,
+        status: finalStatus,
+        createdAt: now,
+        createdBy: activePegawai?.nama || 'Admin SDM',
+        updatedAt: now,
+        updatedBy: activePegawai?.nama || 'Admin SDM'
+      };
+
+      savePenugasanPenilai(
+        newAssignment,
+        activePegawai?.nip || 'admin',
+        activePegawai?.nama || 'Admin SDM'
+      );
+
+      // If peers provided, trigger peer assignment linking
+      if (targetPns && targetPppkPeer) {
+        try {
+          tetapkanRekanKerjaGanda(
+            assignmentId,
+            targetPns,
+            targetPppkPeer,
+            targetAtasan,
+            activePegawai?.nip || 'admin',
+            activePegawai?.nama || 'Admin SDM'
+          );
+        } catch (linkErr) {
+          console.warn('Auto link peers warning:', linkErr);
+        }
+      }
+
+      setAddModalOpen(false);
+      safeRefresh();
+      safeShowToast(`Penugasan penilai untuk ${targetPppk.nama} berhasil dibuat.`, 'success');
+    } catch (err: any) {
+      safeShowToast(err.message || 'Gagal membuat penugasan baru.', 'error');
     }
   };
 
@@ -572,11 +692,29 @@ export const PPPKPenetapanPenilaiTab: React.FC<PPPKPenetapanPenilaiTabProps> = (
                   : 'Daftar PPPK Terbimbing & Penetapan Rekan Kerja (Kewenangan Pejabat Penilai)'}
               </h4>
             </div>
-            <span className="text-xs text-slate-500 font-bold">
-              {activeRole === 'ADMIN'
-                ? 'Admin memiliki akses penuh untuk Edit (ubah pejabat, rekan, atasan, status) & Hapus penugasan'
-                : 'Pejabat Penilai dapat mengedit rekan kerja/atasan atau mereset penetapan rekan'}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-500 font-bold hidden xl:inline">
+                {activeRole === 'ADMIN'
+                  ? 'Admin memiliki akses penuh untuk Buat Penugasan, Edit & Hapus penugasan'
+                  : 'Pejabat Penilai dapat menetapkan rekan kerja 360° & atasan'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddPppkNip('');
+                  setAddPejabatNip(activeRole === 'PEJABAT_PENILAI' && activePegawai ? activePegawai.nip : '');
+                  setAddPnsNip('');
+                  setAddPppkPeerNip('');
+                  setAddAtasanNip('');
+                  setAddInitialStatus('DISETUJUI');
+                  setAddModalOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              >
+                <i className="bi bi-person-plus-fill"></i>
+                <span>+ Tambah Penugasan Baru</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1049,6 +1187,235 @@ export const PPPKPenetapanPenilaiTab: React.FC<PPPKPenetapanPenilaiTabProps> = (
                   className="px-5 py-2 rounded-xl font-black text-white bg-indigo-600 hover:bg-indigo-700 text-xs shadow-md shadow-indigo-900/20"
                 >
                   Simpan Perubahan
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Assignment Modal (Admin & Pejabat Penilai) */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black">
+                  <i className="bi bi-person-plus-fill"></i>
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">
+                    Tambah Penugasan Penilai & Rekan 360° Baru
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Periode: {effectivePeriod?.name || 'Aktif'} &bull; Tahun {effectivePeriod?.year}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddModalOpen(false)}
+                className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center"
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAdd} className="space-y-4 text-xs">
+              
+              {/* Pegawai PPPK yang Dinilai */}
+              <div className="space-y-1.5">
+                <label className="font-black text-slate-700 uppercase tracking-wider block">
+                  1. Pegawai PPPK yang Dinilai: <span className="text-rose-600">*</span>
+                </label>
+                <select
+                  value={addPppkNip}
+                  onChange={(e) => setAddPppkNip(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Pilih Pegawai PPPK --</option>
+                  {pppkList.map(p => (
+                    <option key={p.nip} value={p.nip}>
+                      {p.nama} (NIP: {p.nip}) - {p.jabatan}
+                    </option>
+                  ))}
+                  {/* Fallback to all employees if pppkList empty */}
+                  {pppkList.length === 0 && effectiveAllPegawai.map(p => (
+                    <option key={p.nip} value={p.nip}>
+                      {p.nama} (NIP: {p.nip}) - {p.jabatan}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Jenis Pejabat Penilai */}
+              <div className="space-y-1.5">
+                <label className="font-black text-slate-700 uppercase tracking-wider block">
+                  2. Jenis Pejabat Penilai:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                    addJenisPejabat === 'KETUA_TIM_KERJA'
+                      ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-bold'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="addJenisPejabat"
+                      checked={addJenisPejabat === 'KETUA_TIM_KERJA'}
+                      onChange={() => setAddJenisPejabat('KETUA_TIM_KERJA')}
+                      className="text-indigo-600"
+                    />
+                    <div>
+                      <div className="font-bold text-xs">Ketua Tim Kerja</div>
+                      <div className="text-[10px] text-slate-500">Pimpinan operasional tugas</div>
+                    </div>
+                  </label>
+                  <label className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                    addJenisPejabat === 'PEJABAT_MANAJERIAL'
+                      ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-bold'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="addJenisPejabat"
+                      checked={addJenisPejabat === 'PEJABAT_MANAJERIAL'}
+                      onChange={() => setAddJenisPejabat('PEJABAT_MANAJERIAL')}
+                      className="text-indigo-600"
+                    />
+                    <div>
+                      <div className="font-bold text-xs">Pejabat Manajerial</div>
+                      <div className="text-[10px] text-slate-500">Koordinator / Direktur</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Pejabat Penilai Kinerja (Atasan 60%) */}
+              <div className="space-y-1.5">
+                <label className="font-black text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>3. Pejabat Penilai Kinerja (Bobot 60%): <span className="text-rose-600">*</span></span>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Atasan Langsung</span>
+                </label>
+                <select
+                  value={addPejabatNip}
+                  onChange={(e) => setAddPejabatNip(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Pilih Pejabat Penilai --</option>
+                  {effectiveAllPegawai.map(p => (
+                    <option key={p.nip} value={p.nip}>
+                      {p.nama} (NIP: {p.nip}) - {p.jabatan}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Penilai Perilaku 360 Box */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <i className="bi bi-people-fill text-indigo-600"></i>
+                  <span className="font-black text-slate-800 text-xs uppercase tracking-wider">
+                    Penilai Perilaku 360° (Rekan Sejawat - Total Bobot 40%)
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Setiap PPPK wajib memiliki 1 Rekan Kerja PNS (Bobot 20%) dan 1 Rekan Kerja PPPK (Bobot 20%) untuk mengisi 7 dimensi perilaku BerAKHLAK.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* Rekan PNS */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-blue-900 text-[11px] block">
+                      Rekan Kerja PNS (Bobot 20%):
+                    </label>
+                    <select
+                      value={addPnsNip}
+                      onChange={(e) => setAddPnsNip(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Pilih Rekan PNS (Opsional saat ini) --</option>
+                      {pnsList.map(p => (
+                        <option key={p.nip} value={p.nip}>
+                          {p.nama} ({p.jabatan})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Rekan PPPK */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-emerald-900 text-[11px] block">
+                      Rekan Kerja PPPK (Bobot 20%):
+                    </label>
+                    <select
+                      value={addPppkPeerNip}
+                      onChange={(e) => setAddPppkPeerNip(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="">-- Pilih Rekan PPPK (Opsional saat ini) --</option>
+                      {pppkList.map(p => (
+                        <option key={p.nip} value={p.nip}>
+                          {p.nama} ({p.jabatan})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Atasan Pejabat Penilai */}
+              <div className="space-y-1.5">
+                <label className="font-black text-slate-700 uppercase tracking-wider block">
+                  4. Atasan Pejabat Penilai (Opsional / Koordinator / Direktur):
+                </label>
+                <select
+                  value={addAtasanNip}
+                  onChange={(e) => setAddAtasanNip(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Pilih Atasan Pejabat (Opsional) --</option>
+                  {effectiveAllPegawai.map(p => (
+                    <option key={p.nip} value={p.nip}>
+                      {p.nama} ({p.jabatan})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Penugasan */}
+              <div className="space-y-1.5">
+                <label className="font-black text-slate-700 uppercase tracking-wider block">
+                  5. Status Awal Penugasan:
+                </label>
+                <select
+                  value={addInitialStatus}
+                  onChange={(e) => setAddInitialStatus(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="DISETUJUI">DISETUJUI (Langsung aktif dan siap input rekan/evaluasi)</option>
+                  <option value="DALAM_PENILAIAN">DALAM_PENILAIAN (Rekan telah lengkap dan penilaian berjalan)</option>
+                  <option value="MENUNGGU_VERIFIKASI">MENUNGGU_VERIFIKASI (Perlu verifikasi formal admin)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setAddModalOpen(false)}
+                  className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl font-black text-white bg-indigo-600 hover:bg-indigo-700 text-xs shadow-md shadow-indigo-900/20 flex items-center gap-2 cursor-pointer"
+                >
+                  <i className="bi bi-check-circle-fill"></i>
+                  <span>Simpan Penugasan Baru</span>
                 </button>
               </div>
 
